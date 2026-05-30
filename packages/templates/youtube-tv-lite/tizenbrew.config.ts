@@ -1,6 +1,4 @@
-import { defineTizenBrewModule } from '@tizenbrew-kit/core';
-
-export default defineTizenBrewModule({
+export default {
   name: 'youtube-tv-lite',
   displayName: 'YouTube TV Lite',
   version: '0.1.0',
@@ -16,4 +14,4 @@ export default defineTizenBrewModule({
     back: true,
     playPause: true,
   },
-});
+};

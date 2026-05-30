@@ -1,6 +1,4 @@
-import { defineTizenBrewModule } from '@tizenbrew-kit/core';
-
-export default defineTizenBrewModule({
+export default {
   name: 'facebook-reels-lite',
   displayName: 'Facebook Reels Lite',
   version: '0.1.0',
@@ -22,4 +20,4 @@ export default defineTizenBrewModule({
     hideComments: false,
     memorySaver: true,
   },
-});
+};

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fs from 'fs-extra';
+import { loadConfigFromFile } from 'vite';
 import { createManifest, validateConfig, type TizenBrewModuleConfig } from '@tizenbrew-kit/core';
 
 const CONFIG_CANDIDATES = ['tizenbrew.config.ts', 'tizenbrew.config.mts', 'tizenbrew.config.js'];
@@ -17,8 +18,24 @@ export async function resolveConfigPath(cwd = process.cwd()): Promise<string> {
 
 export async function loadConfig(cwd = process.cwd()): Promise<TizenBrewModuleConfig> {
   const configPath = await resolveConfigPath(cwd);
-  const mod = await import(pathToFileURL(configPath).href);
-  const config = mod.default as TizenBrewModuleConfig | undefined;
+  let config: TizenBrewModuleConfig | undefined;
+
+  if (configPath.endsWith('.ts') || configPath.endsWith('.mts')) {
+    const loaded = await loadConfigFromFile(
+      {
+        command: 'build',
+        mode: 'production',
+      },
+      configPath,
+      cwd,
+      undefined,
+      false,
+    );
+    config = loaded?.config as TizenBrewModuleConfig | undefined;
+  } else {
+    const mod = await import(pathToFileURL(configPath).href);
+    config = mod.default as TizenBrewModuleConfig | undefined;
+  }
 
   if (!config) {
     throw new Error(`Config file at ${configPath} must export default defineTizenBrewModule({...}).`);

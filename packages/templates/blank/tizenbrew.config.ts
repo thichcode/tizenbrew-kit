@@ -1,6 +1,4 @@
-import { defineTizenBrewModule } from '@tizenbrew-kit/core';
-
-export default defineTizenBrewModule({
+export default {
   name: 'blank-module',
   displayName: 'Blank Module',
   version: '0.1.0',
@@ -10,4 +8,4 @@ export default defineTizenBrewModule({
     scripts: ['src/inject.ts'],
     styles: ['src/style.css'],
   },
-});
+};
