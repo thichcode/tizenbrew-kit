@@ -4,4 +4,3 @@ release/
 .turbo/
 coverage/
 *.log
-pnpm-lock.yaml
