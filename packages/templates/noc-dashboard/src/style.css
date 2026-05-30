@@ -1,0 +1,22 @@
+#tbk-offline-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  font-size: 2rem;
+}
+
+#tbk-status-badge {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: #00a86b;
+  color: #fff;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  z-index: 9999;
+}

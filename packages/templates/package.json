@@ -1,0 +1,12 @@
+{
+  "name": "@tizenbrew-kit/templates",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Template assets for tizenbrew-kit CLI",
+  "scripts": {
+    "build": "node -e \"console.log('templates: no build step')\"",
+    "test": "node -e \"console.log('templates: no tests')\"",
+    "lint": "node -e \"console.log('templates: no lint step')\""
+  }
+}

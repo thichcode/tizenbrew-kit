@@ -1,0 +1,30 @@
+{
+  "name": "tizenbrew-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo for building lightweight TizenBrew-compatible modules",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @tizenbrew-kit/cli dev",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "check": "pnpm lint && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.15.30",
+    "eslint": "^9.28.0",
+    "prettier": "^3.5.3",
+    "typescript-eslint": "^8.46.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

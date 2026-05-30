@@ -1,0 +1,43 @@
+{
+  "name": "@tizenbrew-kit/cli",
+  "version": "0.1.0",
+  "description": "CLI toolkit for creating and packaging TizenBrew-compatible modules",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "tizenbrew-kit": "dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/bin.ts --dts --format esm,cjs --clean --splitting false --external archiver --external fs-extra --external commander --external vite --external @tizenbrew-kit/core",
+    "dev": "node --loader ts-node/esm src/bin.ts dev",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@tizenbrew-kit/core": "workspace:*",
+    "commander": "^13.1.0",
+    "fs-extra": "^11.3.0",
+    "vite": "^6.3.5"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/fs-extra": "^11.0.4",
+    "archiver": "^7.0.1",
+    "ts-node": "^10.9.2"
+  }
+}
