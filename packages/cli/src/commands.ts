@@ -11,6 +11,7 @@ const SUPPORTED_TEMPLATES: TemplateName[] = [
   'youtube-tv-lite',
   'facebook-reels-lite',
   'noc-dashboard',
+  'iptv-player',
 ];
 
 function pickTemplate(input?: string): TemplateName {
