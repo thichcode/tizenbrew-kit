@@ -1,0 +1,34 @@
+{
+  "name": "@kv8n2oryk/fb-reels-tv",
+  "version": "0.1.0",
+  "description": "Facebook Reels TV helper for TizenBrew on Samsung Tizen 3",
+  "type": "module",
+  "packageType": "app",
+  "appName": "Facebook Reels TV",
+  "appPath": "index.html",
+  "keys": [],
+  "files": [
+    "index.html",
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "tizenbrew-kit dev",
+    "build": "tizenbrew-kit build",
+    "package": "tizenbrew-kit package",
+    "doctor": "tizenbrew-kit doctor",
+    "test": "vitest run test/package-format.test.ts"
+  },
+  "keywords": [
+    "facebook",
+    "reels",
+    "tizen",
+    "tizenbrew",
+    "samsung-tv",
+    "tv",
+    "remote"
+  ],
+  "license": "MIT"
+}
