@@ -1,6 +1,7 @@
 const LOG_PREFIX = '[fb-reels-tv]';
 const CLEANUP_DELAY_MS = 350;
 const NAVIGATION_SCROLL_RATIO = 0.82;
+const MIN_SCROLL_PX = 320;
 
 const KEY_CODES: Record<number, string> = {
   13: 'Enter',
@@ -16,10 +17,6 @@ const KEY_CODES: Record<number, string> = {
 };
 
 const HIDE_SELECTORS = [
-  '[aria-label="Stories"]',
-  '[aria-label="Comments"]',
-  '[role="complementary"]',
-  '[data-pagelet="RightRail"]',
   '[data-pagelet="VideoChatHomeUnit"]',
   'div[aria-label="Comment"]',
 ];
@@ -65,7 +62,7 @@ function toggleVideoPlayback(): void {
 }
 
 function navigateReel(direction: 1 | -1): void {
-  const amount = Math.max(320, Math.floor(window.innerHeight * NAVIGATION_SCROLL_RATIO));
+  const amount = Math.max(MIN_SCROLL_PX, Math.floor(window.innerHeight * NAVIGATION_SCROLL_RATIO));
   window.scrollBy({ top: amount * direction, left: 0, behavior: 'smooth' });
 }
 
@@ -74,7 +71,7 @@ function enterTvMode(): void {
   document.body.classList.add('fb-reels-tv-mode');
 }
 
-function exitFullscreenLikeMode(): void {
+function exitFullscreen(): void {
   if (document.fullscreenElement) {
     document.exitFullscreen().catch((error: unknown) => log('Exit fullscreen failed', error));
   }
@@ -155,7 +152,7 @@ function setupKeyboardNavigation(): void {
       }
 
       if (key === 'Escape' || key === 'Backspace') {
-        exitFullscreenLikeMode();
+        exitFullscreen();
       }
     },
     { capture: true },
