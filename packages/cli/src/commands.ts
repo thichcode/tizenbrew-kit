@@ -10,6 +10,7 @@ const SUPPORTED_TEMPLATES: TemplateName[] = [
   'blank',
   'youtube-tv-lite',
   'facebook-reels-lite',
+  'fb-reels-tv',
   'noc-dashboard',
   'iptv-player',
 ];
@@ -56,10 +57,16 @@ export async function buildCommand(): Promise<void> {
 
   await fs.emptyDir(distDir);
 
+  const indexPath = path.join(process.cwd(), 'src', 'index.html');
+  if (await fs.pathExists(indexPath)) {
+    await fs.copy(indexPath, path.join(distDir, 'index.html'));
+  }
+
   for (const entry of config.inject.scripts) {
     await viteBuild({
       configFile: false,
       build: {
+        target: 'es2015',
         outDir: distDir,
         emptyOutDir: false,
         sourcemap: true,

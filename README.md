@@ -33,7 +33,7 @@ pnpm exec tizenbrew-kit package
 ```
 
 ## CLI commands
-- `tizenbrew-kit create <name> --template <blank|youtube-tv-lite|facebook-reels-lite|noc-dashboard>`
+- `tizenbrew-kit create <name> --template <blank|youtube-tv-lite|facebook-reels-lite|fb-reels-tv|noc-dashboard|iptv-player>`
 - `tizenbrew-kit dev`
 - `tizenbrew-kit build`
 - `tizenbrew-kit package`
@@ -71,6 +71,7 @@ export default defineTizenBrewModule({
 ## Templates
 - `blank`: minimal starter files
 - `facebook-reels-lite`: safe UI simplification + TV navigation helper
+- `fb-reels-tv`: publishable Facebook Reels TV package for Samsung Tizen 3 remote navigation
 - `youtube-tv-lite`: YouTube TV navigation helper (no ad-blocking claims)
 - `noc-dashboard`: internal dashboard TV mode helper
 

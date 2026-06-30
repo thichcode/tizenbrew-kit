@@ -20,7 +20,7 @@ program
   .argument('<name>', 'project directory name')
   .option(
     '-t, --template <template>',
-    'template name: blank|youtube-tv-lite|facebook-reels-lite|noc-dashboard|iptv-player',
+    'template name: blank|youtube-tv-lite|facebook-reels-lite|fb-reels-tv|noc-dashboard|iptv-player',
   )
   .action(async (name: string, options: { template?: string }) => {
     await createCommand(name, options.template);
