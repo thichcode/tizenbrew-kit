@@ -1,0 +1,60 @@
+name: Android TV Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build web app
+        working-directory: packages/templates/fb-reels-tv
+        run: |
+          npx esbuild src/inject.ts --bundle --minify --target=es2015 --outfile=dist/inject.js
+
+      - name: Copy web assets to Android project
+        run: |
+          mkdir -p android/ShortVideoTV/app/src/main/assets/web/dist
+          cp packages/templates/fb-reels-tv/index.html android/ShortVideoTV/app/src/main/assets/web/
+          cp packages/templates/fb-reels-tv/dist/inject.js android/ShortVideoTV/app/src/main/assets/web/dist/
+          cp packages/templates/fb-reels-tv/src/style.css android/ShortVideoTV/app/src/main/assets/web/ 2>/dev/null || true
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=$(node -p 'require(`./packages/templates/fb-reels-tv/package.json`).version')" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.2"
+
+      - name: Build APK
+        working-directory: android/ShortVideoTV
+        run: gradle assembleDebug -PappVersionName=${{ steps.version.outputs.VERSION }} -PappVersionCode=${{ github.run_number }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.version.outputs.VERSION }}
+          name: "ShortVideo TV Android v${{ steps.version.outputs.VERSION }}"
+          body: "Android TV APK build for shortvideo-tv v${{ steps.version.outputs.VERSION }}\n\nTrigger from GitHub Actions → Run workflow → select android-release.yml"
+          files: android/ShortVideoTV/app/build/outputs/apk/debug/app-debug.apk
+          fail_on_unmatched_files: true
