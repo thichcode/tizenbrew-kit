@@ -2,7 +2,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fs from 'fs-extra';
 import { loadConfigFromFile } from 'vite';
-import { createManifest, validateConfig, type TizenBrewModuleConfig } from '@tizenbrew-kit/core';
+import { createManifest, validateConfig, type TizenBrewModuleConfig } from '@kv8n2oryk/tizenbrew-kit-core';
 
 const CONFIG_CANDIDATES = ['tizenbrew.config.ts', 'tizenbrew.config.mts', 'tizenbrew.config.js'];
 
@@ -71,6 +71,9 @@ export async function writeManifestAndModule(cwd = process.cwd()): Promise<void>
   await fs.ensureDir(distDir);
 
   const manifest = createManifest(config);
+  // Fix asset paths to match dist output filenames
+  manifest.assets.scripts = manifest.assets.scripts.map((s) => path.basename(s).replace(/\.ts$/, '.js'));
+  manifest.assets.styles = manifest.assets.styles.map((s) => path.basename(s));
   const moduleJson = {
     id: config.name,
     name: config.displayName,

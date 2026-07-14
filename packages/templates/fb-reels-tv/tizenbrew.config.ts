@@ -1,23 +1,17 @@
 export default {
   name: 'fb-reels-tv',
-  displayName: 'Facebook Reels TV',
-  version: '0.1.0',
-  description: 'Facebook Reels TV helper for TizenBrew on Samsung Tizen 3',
-  targetUrl: 'https://www.facebook.com/reel',
+  displayName: 'ShortVideo TV',
+  version: '0.1.20',
+  description: 'Public short-video feed player for TizenBrew on Samsung Tizen 3',
+  targetUrl: 'https://localhost',
   inject: {
     scripts: ['src/inject.ts'],
-    styles: ['src/style.css'],
+    styles: [],
   },
   tvKeys: {
     arrows: true,
     enter: true,
     back: true,
     playPause: true,
-  },
-  performance: {
-    removeAnimations: true,
-    lazyMedia: true,
-    hideComments: true,
-    memorySaver: true,
   },
 };

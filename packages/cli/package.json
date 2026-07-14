@@ -1,5 +1,5 @@
 {
-  "name": "@tizenbrew-kit/cli",
+  "name": "@kv8n2oryk/tizenbrew-kit-cli",
   "version": "0.1.0",
   "description": "CLI toolkit for creating and packaging TizenBrew-compatible modules",
   "type": "module",
@@ -23,13 +23,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/bin.ts --dts --format esm,cjs --clean --splitting false --external archiver --external fs-extra --external commander --external vite --external @tizenbrew-kit/core",
+    "build": "tsup src/index.ts src/bin.ts --dts --format esm,cjs --clean --splitting false --external archiver --external fs-extra --external commander --external vite --external @kv8n2oryk/tizenbrew-kit-core",
     "dev": "node --loader ts-node/esm src/bin.ts dev",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@tizenbrew-kit/core": "workspace:*",
+    "@kv8n2oryk/tizenbrew-kit-core": "workspace:*",
     "commander": "^13.1.0",
     "fs-extra": "^11.3.0",
     "vite": "^6.3.5"

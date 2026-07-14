@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>yt-dlp /play test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #eee; font-family: monospace; padding: 24px; }
+    h1 { font-size: 18px; margin-bottom: 16px; color: #e94560; }
+    input { width: 100%; padding: 10px; font-size: 14px; background: #222; color: #eee; border: 1px solid #444; border-radius: 6px; margin-bottom: 8px; }
+    button { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-right: 8px; margin-bottom: 12px; }
+    .btn-play { background: #e94560; color: #fff; }
+    .btn-resolve { background: #1f6feb; color: #fff; }
+    video { width: 100%; max-height: 500px; background: #000; margin-top: 12px; border-radius: 8px; }
+    #log { margin-top: 16px; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; max-height: 300px; overflow-y: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+    .ok { color: #4caf50; }
+    .err { color: #e94560; }
+    .info { color: #888; }
+    label { display: block; color: #888; font-size: 12px; margin-bottom: 4px; }
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+    .presets { margin-bottom: 16px; }
+    .presets button { font-size: 12px; padding: 6px 12px; background: #333; color: #aaa; }
+    .presets button:hover { background: #444; color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>yt-dlp /play test</h1>
+
+  <div class="presets">
+    <button onclick="setUrl('https://www.facebook.com/reel/1658929128587262')">FB Reel</button>
+    <button onclick="setUrl('https://www.tiktok.com/@tiktok/video/7554941202322533671')">TikTok</button>
+    <button onclick="setUrl('https://vt.tiktok.com/ZMAbHgA2b/')">TikTok short</button>
+  </div>
+
+  <label>Source URL</label>
+  <input id="url" type="url" placeholder="https://www.facebook.com/reel/...">
+
+  <div class="row">
+    <button class="btn-play" onclick="testPlay()">/play (stream)</button>
+    <button class="btn-resolve" onclick="testResolve()">/resolve (metadata)</button>
+    <button class="btn-resolve" onclick="testHealth()">/health</button>
+  </div>
+
+  <video id="video" controls></video>
+
+  <div id="log"></div>
+
+  <script>
+    var SERVER = 'http://84.8.220.24:8000';
+    var API_KEY = '299145bbcefca5e3dd0f193dc6d187b0';
+    var logEl = document.getElementById('log');
+    var video = document.getElementById('video');
+
+    function setUrl(u) {
+      document.getElementById('url').value = u;
+    }
+
+    function log(msg, cls) {
+      var line = document.createElement('div');
+      line.className = cls || '';
+      line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function testHealth() {
+      log('GET /health ...', 'info');
+      fetch(SERVER + '/health')
+        .then(function(r) { return r.json(); })
+        .then(function(d) { log('OK: ' + JSON.stringify(d), 'ok'); })
+        .catch(function(e) { log('ERROR: ' + e.message, 'err'); });
+    }
+
+    function testResolve() {
+      var url = document.getElementById('url').value.trim();
+      if (!url) return log('No URL', 'err');
+      log('GET /resolve?url=' + url.substring(0, 60) + ' ...', 'info');
+      var t0 = Date.now();
+      fetch(SERVER + '/resolve?url=' + encodeURIComponent(url), {
+        headers: { 'X-API-Key': API_KEY }
+      })
+        .then(function(r) {
+          log('HTTP ' + r.status + ' (' + (Date.now() - t0) + 'ms)', r.ok ? 'ok' : 'err');
+          return r.json();
+        })
+        .then(function(d) {
+          if (d.ok && d.resolved) {
+            log('videoUrl: ' + (d.resolved.videoUrl || '').substring(0, 120), 'ok');
+            log('title: ' + d.resolved.title, 'ok');
+          } else {
+            log('FAILED: ' + JSON.stringify(d).substring(0, 300), 'err');
+          }
+        })
+        .catch(function(e) { log('ERROR: ' + e.message, 'err'); });
+    }
+
+    function testPlay() {
+      var url = document.getElementById('url').value.trim();
+      if (!url) return log('No URL', 'err');
+      var playUrl = SERVER + '/play?url=' + encodeURIComponent(url) + '&api_key=' + encodeURIComponent(API_KEY);
+      log('Loading /play ...', 'info');
+      var t0 = Date.now();
+      video.src = playUrl;
+      video.load();
+      video.play().then(function() {
+        log('Playing! (' + (Date.now() - t0) + 'ms to start)', 'ok');
+      }).catch(function(e) {
+        log('PLAY ERROR: ' + e.message + ' (code ' + (video.error ? video.error.code : '?') + ')', 'err');
+      });
+    }
+
+    video.addEventListener('playing', function() {
+      log('Video playing event fired', 'ok');
+    });
+    video.addEventListener('error', function() {
+      var c = video.error ? video.error.code : 0;
+      var msgs = {1:'Aborted',2:'Network',3:'Decode',4:'Format'};
+      log('Video error: ' + (msgs[c] || 'code ' + c), 'err');
+    });
+    video.addEventListener('loadedmetadata', function() {
+      log('Metadata loaded: ' + video.duration.toFixed(1) + 's, ' + video.videoWidth + 'x' + video.videoHeight, 'ok');
+    });
+    video.addEventListener('waiting', function() {
+      log('Buffering...', 'info');
+    });
+  </script>
+</body>
+</html>

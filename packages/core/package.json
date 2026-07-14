@@ -1,5 +1,5 @@
 {
-  "name": "@tizenbrew-kit/core",
+  "name": "@kv8n2oryk/tizenbrew-kit-core",
   "version": "0.1.0",
   "description": "Core SDK for TizenBrew module config and manifest generation",
   "type": "module",
