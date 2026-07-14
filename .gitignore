@@ -62,8 +62,16 @@ android/ShortVideoTV/local.properties
 *.aab
 *.ap_
 
+# --- Secrets ---
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
 # --- Cloudflare Workers ---
 .wrangler/
+wrangler.toml
 
 # --- Temp files ---
 *.tmp
