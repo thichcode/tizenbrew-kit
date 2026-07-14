@@ -1,6 +1,80 @@
+# --- Dependencies ---
 node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# --- Build output ---
 dist/
 release/
 .turbo/
 coverage/
+*.tsbuildinfo
+*.js.map
+*.css.map
+
+# --- Environment ---
+.env
+.env.*
+*.local
+
+# --- Logs ---
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.ntfs*
+
+# --- Python (backend/yt-dlp-resolver) ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+*.egg
+dist/
+build/
+
+# --- Android TV (android/ShortVideoTV) ---
+android/ShortVideoTV/app/src/main/assets/web/
+android/ShortVideoTV/app/build/
+android/ShortVideoTV/.gradle/
+android/ShortVideoTV/local.properties
+*.apk
+*.aab
+*.ap_
+
+# --- Cloudflare Workers ---
+.wrangler/
+
+# --- Temp files ---
+*.tmp
+.cache/
+tmp/
+temp/
+
+# --- NPM ---
+.npm-cache/
+
+# --- Tizen ---
+.tizen/
+*.wgt
+*.tpk
