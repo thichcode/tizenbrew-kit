@@ -386,6 +386,12 @@
   }
 
   function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
+    var androidBridge = window.AndroidBridge;
+    if (androidBridge && typeof androidBridge.openVideo === 'function') {
+      androidBridge.openVideo(sourceUrl, item && item.title || '');
+      return;
+    }
+
     var attemptId = ++mediaAttemptId;
     mediaFailureScheduleId += 1;
     if (pendingMediaFailureTimer) {

@@ -30,5 +30,10 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".PlayerActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize|layoutDirection"
+            android:exported="false" />
     </application>
 </manifest>
