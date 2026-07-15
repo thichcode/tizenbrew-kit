@@ -8,9 +8,6 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
@@ -26,6 +23,7 @@ import java.util.Map;
 public class PlayerActivity extends AppCompatActivity {
 
     private ExoPlayer player;
+    private PlayerView playerView;
     private Handler timeoutHandler;
     private Runnable timeoutRunnable;
     private TextView errorView;
@@ -65,8 +63,7 @@ public class PlayerActivity extends AppCompatActivity {
         DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
                 .setDefaultRequestProperties(headers)
                 .setConnectTimeoutMs(15000)
-                .setReadTimeoutMs(30000)
-                .setAllowCrossProtocolRedirects(true);
+                .setReadTimeoutMs(30000);
 
         player = new ExoPlayer.Builder(this)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory))
