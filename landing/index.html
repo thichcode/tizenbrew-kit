@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ShortVideo TV – Android TV</title>
+<title>ShortVideo TV – Android TV &amp; Samsung Tizen</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -16,51 +16,51 @@
     flex-direction: column;
     align-items: center;
   }
-  .container { max-width: 640px; width: 100%; padding: 40px 24px; }
+  .container { max-width: 680px; width: 100%; padding: 40px 24px; }
 
-  /* Hero */
   .hero { text-align: center; margin-bottom: 48px; }
-  .hero-icon {
-    width: 80px; height: 80px; background: #1a1a2e;
-    border-radius: 20px; display: inline-flex; align-items: center; justify-content: center;
-    margin-bottom: 16px;
-  }
-  .hero-icon svg { width: 40px; height: 40px; fill: #fff; }
   .hero h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
-  .hero p { color: #888; font-size: 15px; max-width: 420px; margin: 0 auto; }
+  .hero p { color: #888; font-size: 15px; max-width: 480px; margin: 0 auto; }
 
-  /* Download */
-  .download-wrap { text-align: center; margin-bottom: 48px; }
+  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title .badge { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 6px; background: #222; }
+
+  .card {
+    background: #161616; border: 1px solid #222; border-radius: 12px;
+    padding: 24px; margin-bottom: 32px;
+  }
+  .card h3 { font-size: 15px; margin-bottom: 8px; }
+  .card p { font-size: 14px; color: #888; margin-bottom: 12px; }
+  .card p:last-child { margin-bottom: 0; }
+
   .btn {
     display: inline-flex; align-items: center; gap: 10px;
-    background: #6c5ce7; color: #fff; text-decoration: none;
-    padding: 14px 36px; border-radius: 12px; font-size: 16px; font-weight: 600;
-    transition: background .2s;
+    padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    text-decoration: none; transition: background .2s;
   }
-  .btn:hover { background: #5a4bd1; }
-  .btn svg { width: 20px; height: 20px; fill: currentColor; }
-  .btn-note { display: block; margin-top: 8px; font-size: 13px; color: #666; }
-  .btn-note a { color: #6c5ce7; text-decoration: none; }
-  .btn-note a:hover { text-decoration: underline; }
+  .btn svg { width: 18px; height: 18px; fill: currentColor; }
+  .btn-primary { background: #6c5ce7; color: #fff; }
+  .btn-primary:hover { background: #5a4bd1; }
+  .btn-secondary { background: #1a6dff; color: #fff; }
+  .btn-secondary:hover { background: #1558d4; }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
 
-  /* Features */
-  .features { display: flex; flex-direction: column; gap: 12px; margin-bottom: 48px; }
-  .feature {
-    background: #161616; border: 1px solid #222; border-radius: 10px;
-    padding: 16px; display: flex; align-items: center; gap: 14px;
+  code {
+    background: #0d0d0d; border: 1px solid #2a2a2a; border-radius: 6px;
+    padding: 3px 8px; font-size: 13px; color: #e94560;
   }
-  .feature-marker {
-    width: 8px; height: 8px; border-radius: 50%; background: #6c5ce7; flex-shrink: 0;
+  pre {
+    background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px;
+    padding: 14px 16px; font-size: 13px; overflow-x: auto; margin: 12px 0;
+    color: #ccc;
   }
-  .feature strong { display: block; font-size: 14px; margin-bottom: 2px; }
-  .feature span { font-size: 13px; color: #888; }
+  pre .cmd { color: #e94560; }
+  pre .cmt { color: #555; }
 
-  /* Screenshot placeholder */
-  .screenshot { margin-bottom: 48px; text-align: center; }
-  .screenshot a { color: #6c5ce7; text-decoration: none; font-size: 14px; }
-  .screenshot a:hover { text-decoration: underline; }
+  ul { list-style: none; padding: 0; }
+  ul li { padding: 4px 0; font-size: 14px; color: #bbb; }
+  ul li::before { content: "–"; color: #555; margin-right: 8px; }
 
-  /* Footer */
   .footer { text-align: center; padding: 24px 0 48px; font-size: 13px; color: #555; }
   .footer a { color: #666; text-decoration: none; }
   .footer a:hover { color: #888; }
@@ -70,73 +70,75 @@
 <div class="container">
 
   <div class="hero">
-    <div class="hero-icon">
-      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    </div>
     <h1>ShortVideo TV</h1>
-    <p>Facebook Reels &amp; TikTok feed player for Android TV. Browse, auto-play, and watch short videos directly on your TV.</p>
+    <p>Facebook Reels feed player for Android TV (APK) and Samsung Tizen (npm module).<br>Browse, auto-play, and watch short videos directly on your TV.</p>
   </div>
 
-  <div class="download-wrap">
-    <a class="btn" href="https://github.com/thichcode/tizenbrew-kit/releases/latest/download/app-debug.apk" target="_blank">
-      <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v4h3.66V9h3.84L12 2z"/></svg>
-      Download APK
-    </a>
-    <span class="btn-note">
-      Sideload on Android TV 5+ ·
-      <a href="https://github.com/thichcode/tizenbrew-kit/releases" target="_blank">All releases</a>
-    </span>
+  <div class="section-title">
+    Android TV
+    <span class="badge">APK</span>
   </div>
-
-  <div class="features">
-    <div class="feature">
-      <div class="feature-marker"></div>
-      <div>
-        <strong>Facebook Reels</strong>
-        <span>Browse and play Reels from a curated feed. Direct CDN playback with automatic fallback.</span>
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-marker"></div>
-      <div>
-        <strong>TikTok videos</strong>
-        <span>Resolve and play TikTok videos. Client-side HTML scraping for direct video URLs.</span>
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-marker"></div>
-      <div>
-        <strong>Auto-play</strong>
-        <span>New feed items play automatically when idle. Continuous playback without remote taps.</span>
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-marker"></div>
-      <div>
-        <strong>ExoPlayer engine</strong>
-        <span>Native Android TV video player with broad codec support. No WebView video limitations.</span>
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-marker"></div>
-      <div>
-        <strong>Remote-friendly</strong>
-        <span>D-pad navigation, Back to close, Play/Pause. Designed for TV remotes from day one.</span>
-      </div>
-    </div>
-    <div class="feature">
-      <div class="feature-marker"></div>
-      <div>
-        <strong>Phone as remote</strong>
-        <span>Scan a QR code to submit videos from your phone. The feed syncs to your TV instantly.</span>
-      </div>
+  <div class="card">
+    <h3>Native ExoPlayer app</h3>
+    <p>Sideload the APK on any Android TV 5+. D-pad navigation, auto-play, and Facebook Reel support with automatic CDN fallback.</p>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="https://github.com/thichcode/tizenbrew-kit/releases/latest/download/app-debug.apk" target="_blank">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v4h3.66V9h3.84L12 2z"/></svg>
+        Download APK
+      </a>
     </div>
   </div>
 
-  <div class="screenshot">
-    <a href="https://github.com/thichcode/tizenbrew-kit/releases/latest/download/app-debug.apk" target="_blank">
-      ↓ Download ShortVideo TV for Android TV
-    </a>
+  <div class="section-title">
+    Samsung Tizen
+    <span class="badge">npm</span>
+  </div>
+  <div class="card">
+    <h3>shortvideo-tv</h3>
+    <p>An npm package for building a Facebook Reels feed player on Samsung Tizen TVs (2017+). Injects into any web app running on the TV — no native app needed.</p>
+
+    <h3>Install</h3>
+    <pre><span class="cmd">$</span> npm install shortvideo-tv</pre>
+
+    <h3>Quick start</h3>
+    <p>Create a project and build for your TV:</p>
+    <pre><span class="cmt"># create a new package</span>
+<span class="cmd">$</span> npx tizenbrew init my-app
+<span class="cmd">$</span> cd my-app
+
+<span class="cmt"># add the feed player</span>
+<span class="cmd">$</span> npm install shortvideo-tv
+
+<span class="cmt"># configure in tizenbrew.config.ts</span>
+<span class="cmd">$</span> cat >> tizenbrew.config.ts &lt;&lt;'EOF'
+import { defineConfig } from 'tizenbrew';
+export default defineConfig({
+  package: { name: 'MyFeed', appName: 'ShortVideo Feed' },
+  inject: 'node_modules/shortvideo-tv/dist/inject.js',
+});
+EOF
+
+<span class="cmt"># build and run</span>
+<span class="cmd">$</span> npx tizenbrew build
+<span class="cmd">$</span> npx tizenbrew run</pre>
+
+    <h3>How it works</h3>
+    <ul>
+      <li>Runs entirely in the TV's WebView browser</li>
+      <li>Fetches a curated feed from the cloud resolver Worker</li>
+      <li>Resolves Facebook Reels via backend yt-dlp (or direct CDN playback)</li>
+      <li>3-stage fallback: direct CDN → redirect → proxy stream</li>
+      <li>Designed for Samsung Tizen 3+ remote (D-pad, Back, Play/Pause)</li>
+    </ul>
+
+    <div class="btn-row" style="margin-top:16px">
+      <a class="btn btn-secondary" href="https://www.npmjs.com/package/shortvideo-tv" target="_blank">
+        npm Package
+      </a>
+      <a class="btn btn-primary" href="https://github.com/thichcode/tizenbrew-kit" target="_blank" style="background:#333">
+        GitHub
+      </a>
+    </div>
   </div>
 
   <div class="footer">
