@@ -20,8 +20,8 @@ function extractVideoId(url: string): string | null {
   return null;
 }
 
-async function tryApi(itemId: string): Promise<ResolvedItem | null> {
-  const url = `https://www.tiktok.com/api/item/detail/?itemId=${itemId}&aid=1988`;
+async function tryApi(itemId: string, aid: string): Promise<Record<string, unknown> | null> {
+  const url = `https://www.tiktok.com/api/item/detail/?itemId=${itemId}&aid=${aid}`;
   try {
     const res = await fetch(url, {
       headers: {
@@ -34,21 +34,24 @@ async function tryApi(itemId: string): Promise<ResolvedItem | null> {
     });
     if (!res.ok) return null;
     const text = await res.text();
+    if (!text || text.trim().length === 0) return null;
     const data = JSON.parse(text) as Record<string, unknown>;
-    const item = (data as any)?.itemInfo?.itemStruct;
-    if (item?.video?.playAddr) {
-      return {
-        videoUrl: item.video.playAddr,
-        title: item.desc || `Video by @${item.author?.uniqueId || 'unknown'}`,
-        thumbnailUrl: item.video.cover || null,
-        author: item.author?.uniqueId || 'unknown',
-        videoId: String(item.id || ''),
-      };
-    }
-    return null;
+    return data;
   } catch {
     return null;
   }
+}
+
+function parseApiResponse(data: Record<string, unknown>): ResolvedItem | null {
+  const item = (data as any)?.itemInfo?.itemStruct;
+  if (!item?.video?.playAddr) return null;
+  return {
+    videoUrl: item.video.playAddr,
+    title: item.desc || `Video by @${item.author?.uniqueId || 'unknown'}`,
+    thumbnailUrl: item.video.cover || null,
+    author: item.author?.uniqueId || 'unknown',
+    videoId: String(item.id || ''),
+  };
 }
 
 async function tryHtmlPage(url: string): Promise<ResolvedItem | null> {
@@ -161,13 +164,49 @@ function extractFromPlayAddr(html: string): ResolvedItem | null {
 export async function resolveTikTokUrl(url: string): Promise<ResolvedItem | null> {
   const videoId = extractVideoId(url);
 
+  // Try multiple API endpoints with different aid values
   if (videoId) {
-    const result = await tryApi(videoId);
-    if (result) return result;
+    for (const aid of ['1988', '1233', '80054', '1180', '1340']) {
+      const data = await tryApi(videoId, aid);
+      if (data) {
+        const parsed = parseApiResponse(data);
+        if (parsed) return parsed;
+      }
+    }
   }
 
+  // Fall back to HTML page scraping
   const result = await tryHtmlPage(url);
   if (result) return result;
 
   return null;
+}
+
+export async function debugResolveTikTok(url: string): Promise<{
+  videoId: string | null;
+  apiResults: { aid: string; status: number; body: string }[];
+}> {
+  const videoId = extractVideoId(url);
+  const apiResults: { aid: string; status: number; body: string }[] = [];
+
+  if (videoId) {
+    for (const aid of ['1988', '1233', '80054', '1180', '1340']) {
+      const apiUrl = `https://www.tiktok.com/api/item/detail/?itemId=${videoId}&aid=${aid}`;
+      try {
+        const res = await fetch(apiUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Referer': 'https://www.tiktok.com/',
+          },
+        });
+        const body = await res.text();
+        apiResults.push({ aid, status: res.status, body: body.slice(0, 2000) });
+      } catch (e) {
+        apiResults.push({ aid, status: 0, body: String(e) });
+      }
+    }
+  }
+
+  return { videoId, apiResults };
 }

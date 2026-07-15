@@ -70,17 +70,12 @@
 
   function resolveItem(item, callback) {
     if (item.source === 'TikTok') {
-      if (playerLoadingEl) playerLoadingEl.textContent = 'Resolving TikTok...';
-      resolveTikTokOnTv(item.sourceUrl, function (videoUrl) {
-        if (videoUrl) {
-          item.videoUrl = videoUrl;
-          if (playerLoadingEl) playerLoadingEl.textContent = 'URL: ' + (videoUrl.length > 80 ? videoUrl.slice(0, 80) + '...' : videoUrl);
-        } else {
-          item.videoUrl = FALLBACK_RESOLVER_URL + '/play?mode=redirect&url=' + encodeURIComponent(item.sourceUrl) + '&api_key=' + encodeURIComponent(FALLBACK_API_KEY);
-          if (playerLoadingEl) playerLoadingEl.textContent = 'TikTok resolve failed, using fallback';
-        }
-        callback(item);
-      });
+      var androidBridge = window.AndroidBridge;
+      if (androidBridge) {
+        showPlaybackError('TikTok is not supported on this device');
+        return;
+      }
+      showPlaybackError('TikTok is not available');
       return;
     }
     if (item.source === 'Facebook') {
@@ -119,30 +114,7 @@
     callback(item);
   }
 
-  var tikTokResolveCbId = 0;
-  var tikTokResolveCallbacks = {};
-
-  window.__onTikTokResult = function (id, result) {
-    var cb = tikTokResolveCallbacks[id];
-    if (cb) {
-      delete tikTokResolveCallbacks[id];
-      if (result && result.videoUrl) {
-        cb(result.videoUrl);
-      } else {
-        cb(null);
-      }
-    }
-  };
-
   function resolveTikTokOnTv(sourceUrl, callback) {
-    var androidBridge = window.AndroidBridge;
-    if (androidBridge && typeof androidBridge.resolveTikTok === 'function') {
-      var cbId = 'tk' + (++tikTokResolveCbId);
-      tikTokResolveCallbacks[cbId] = callback;
-      androidBridge.resolveTikTok(sourceUrl, cbId);
-      return;
-    }
-
     fetch(sourceUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Linux; Tizen 3.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/2.2 Chrome/63.0.3239.84 TV Safari/537.36',

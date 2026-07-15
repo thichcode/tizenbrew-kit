@@ -1,4 +1,4 @@
-import { resolveTikTokUrl } from './resolver';
+import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
 import { resolveFacebookUrl } from './resolver-facebook';
 import { renderSetupPage } from './setup-page';
 
@@ -294,6 +294,16 @@ async function handleResolve(request: Request, env: Env): Promise<Response> {
   return json({ ok: true, resolved: { videoUrl: trimmed, title: 'Direct URL', thumbnailUrl: null, author: '', videoId: '' } });
 }
 
+async function handleResolveDebug(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const rawUrl = url.searchParams.get('url');
+  if (!rawUrl || !isValidUrl(rawUrl)) {
+    return json({ error: 'Missing or invalid ?url parameter' }, 400);
+  }
+  const result = await debugResolveTikTok(rawUrl.trim());
+  return json({ ok: true, debug: result });
+}
+
 async function handleProxy(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const targetUrl = url.searchParams.get('url');
@@ -397,6 +407,7 @@ export default {
       if (request.method === 'GET' && url.pathname === '/feed') return handleFeed(request, env);
       if (request.method === 'DELETE' && url.pathname === '/feed') return handleDeleteFeed(request, env);
       if (request.method === 'GET' && url.pathname === '/resolve') return handleResolve(request, env);
+      if (request.method === 'GET' && url.pathname === '/resolve-debug') return handleResolveDebug(request);
       if (request.method === 'GET' && url.pathname === '/proxy') return handleProxy(request);
       if (request.method === 'GET' && url.pathname === '/stream') return handleStream(request);
 
