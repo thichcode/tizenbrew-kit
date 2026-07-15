@@ -97,16 +97,14 @@
     <h3>shortvideo-tv</h3>
     <p>Facebook Reels feed player for Samsung Tizen 3+ TVs (2017+). Runs as an injected script in a TizenBrew web app — no native SDK needed.</p>
 
-    <h3>Setup</h3>
-    <p>Requires <a href="https://github.com/reisxd/TizenBrew" style="color:#6c5ce7">TizenBrew</a> — a modded web browser for Samsung Tizen TVs. Install it via <a href="https://github.com/reisxd/TizenBrewInstaller" style="color:#6c5ce7">TizenBrewInstaller</a>, then add ShortVideo as a custom app.</p>
-
-    <pre><span class="cmt"># install the package</span>
-<span class="cmd">$</span> npm install shortvideo-tv
-
-<span class="cmt"># the inject script is at:</span>
-<span class="cmd">$</span> node_modules/shortvideo-tv/dist/inject.js</pre>
-
-    <p>Copy <code>dist/inject.js</code> into a TizenBrew app slot, or bundle it with your own TizenBrew-compatible page.</p>
+    <h3>Install</h3>
+    <ol style="font-size:14px;color:#bbb;padding-left:20px">
+      <li style="margin-bottom:8px">Install <a href="https://github.com/reisxd/TizenBrewInstaller" style="color:#6c5ce7">TizenBrew</a> on your Samsung TV</li>
+      <li style="margin-bottom:8px">Open TizenBrew on your TV</li>
+      <li style="margin-bottom:8px">Go to <strong>Module Manager</strong> (tab bar at the top)</li>
+      <li>Add <code>shortvideo-tv</code> as a module</li>
+    </ol>
+    <p style="margin-top:12px">TizenTube (included by default) can be found on the home screen. Follow the same module manager flow to add ShortVideo TV.</p>
 
     <h3>Related projects</h3>
     <ul>
