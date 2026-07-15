@@ -95,32 +95,31 @@
   </div>
   <div class="card">
     <h3>shortvideo-tv</h3>
-    <p>An npm package for building a Facebook Reels feed player on Samsung Tizen TVs (2017+). Injects into any web app running on the TV — no native app needed.</p>
+    <p>Facebook Reels feed player for Samsung Tizen 3+ TVs (2017+). Runs as an injected script in a TizenBrew web app — no native SDK needed.</p>
 
-    <h3>Install</h3>
-    <pre><span class="cmd">$</span> npm install shortvideo-tv</pre>
+    <h3>Setup</h3>
+    <p>Requires <a href="https://github.com/thichcode/tizenbrew-kit" style="color:#6c5ce7">tizenbrew-kit</a> CLI to build and package for your TV.</p>
+    <pre><span class="cmt"># clone the monorepo</span>
+<span class="cmd">$</span> git clone https://github.com/thichcode/tizenbrew-kit.git
+<span class="cmd">$</span> cd tizenbrew-kit
 
-    <h3>Quick start</h3>
-    <p>Create a project and build for your TV:</p>
-    <pre><span class="cmt"># create a new package</span>
-<span class="cmd">$</span> npx tizenbrew init my-app
+<span class="cmt"># install dependencies</span>
+<span class="cmd">$</span> npm install -g pnpm
+<span class="cmd">$</span> pnpm install
+
+<span class="cmt"># create a new project from template</span>
+<span class="cmd">$</span> pnpm exec tizenbrew-kit init my-app --template fb-reels-tv
+
+<span class="cmt"># build and run on your TV</span>
 <span class="cmd">$</span> cd my-app
+<span class="cmd">$</span> pnpm build
+<span class="cmd">$</span> pnpm package
+<span class="cmd">$</span> pnpm exec tizenbrew-kit run</pre>
 
-<span class="cmt"># add the feed player</span>
-<span class="cmd">$</span> npm install shortvideo-tv
-
-<span class="cmt"># configure in tizenbrew.config.ts</span>
-<span class="cmd">$</span> cat >> tizenbrew.config.ts &lt;&lt;'EOF'
-import { defineConfig } from 'tizenbrew';
-export default defineConfig({
-  package: { name: 'MyFeed', appName: 'ShortVideo Feed' },
-  inject: 'node_modules/shortvideo-tv/dist/inject.js',
-});
-EOF
-
-<span class="cmt"># build and run</span>
-<span class="cmd">$</span> npx tizenbrew build
-<span class="cmd">$</span> npx tizenbrew run</pre>
+    <h3>Or use the published package</h3>
+    <p>Install <code>shortvideo-tv</code> in any TizenBrew project:</p>
+    <pre><span class="cmd">$</span> npm install shortvideo-tv</pre>
+    <p>Then reference <code>node_modules/shortvideo-tv/dist/inject.js</code> as your app's inject script.</p>
 
     <h3>How it works</h3>
     <ul>
