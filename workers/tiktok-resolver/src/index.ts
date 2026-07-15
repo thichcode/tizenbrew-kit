@@ -200,19 +200,7 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
       duration: typeof body.duration === 'number' ? body.duration : 0,
     };
   } else if (isValidTikTokUrl(platformUrl)) {
-    const resolved = await resolveTikTokUrl(platformUrl);
-    if (!resolved) {
-      return json({ error: 'Could not resolve this TikTok URL' }, 422);
-    }
-    feedItem = {
-      id: generateId(platformUrl),
-      title: resolved.title,
-      source: 'TikTok',
-      sourceUrl: platformUrl,
-      videoUrl: resolved.videoUrl,
-      thumbnailUrl: resolved.thumbnailUrl || '',
-      duration: 0,
-    };
+    return json({ error: 'TikTok is not supported' }, 400);
   } else if (isValidFacebookUrl(platformUrl)) {
     const hasFallbackResolver = !!env.FALLBACK_RESOLVER_URL;
     const fallbackResolved = hasFallbackResolver ? await callFallbackResolver(env, platformUrl) : null;

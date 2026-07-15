@@ -69,15 +69,6 @@
   }
 
   function resolveItem(item, callback) {
-    if (item.source === 'TikTok') {
-      var androidBridge = window.AndroidBridge;
-      if (androidBridge) {
-        showPlaybackError('TikTok is not supported on this device');
-        return;
-      }
-      showPlaybackError('TikTok is not available');
-      return;
-    }
     if (item.source === 'Facebook') {
       setFacebookFallbacks(item);
       if (isPreResolvedFacebook(item)) {
@@ -112,38 +103,6 @@
       return;
     }
     callback(item);
-  }
-
-  function resolveTikTokOnTv(sourceUrl, callback) {
-    fetch(sourceUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Tizen 3.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/2.2 Chrome/63.0.3239.84 TV Safari/537.36',
-        'Accept': 'text/html',
-      },
-    })
-      .then(function (r) { return r.text(); })
-      .then(function (html) {
-        var m = html.match(/__UNIVERSAL_DATA_FOR_REHYDRATION__[^>]*>([\s\S]*?)<\/script>/i);
-        if (m) {
-          try {
-            var scope = JSON.parse(m[1]).__DEFAULT_SCOPE__;
-            var detail = scope && scope['webapp.video-detail'];
-            var item = detail && detail.itemInfo && detail.itemInfo.itemStruct;
-            var video = item && item.video;
-            if (video && video.playAddr) {
-              callback(video.playAddr);
-              return;
-            }
-          } catch (e) {}
-        }
-        var m2 = html.match(/"playAddr"\s*:\s*"([^"]+)"/);
-        if (m2) {
-          callback(m2[1].replace(/\\u002F/g, '/').replace(/\\\//g, '/'));
-          return;
-        }
-        callback(null);
-      })
-      .catch(function () { callback(null); });
   }
 
   function isHttpUrl(value) {
@@ -184,6 +143,7 @@
           typeof item.id === 'string' &&
           typeof item.title === 'string' &&
           typeof item.source === 'string' &&
+          item.source !== 'TikTok' &&
           isHttpUrl(item.videoUrl)
         );
       })
