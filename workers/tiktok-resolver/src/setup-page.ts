@@ -30,7 +30,6 @@ export function renderSetupPage(code: string, workerUrl: string): string {
     .msg{margin-top:14px;color:#8a8a8a;font-size:14px;min-height:22px}
     .info{color:#6a6a6a;font-size:13px;margin-top:18px;line-height:1.5;border-top:1px solid #222;padding-top:16px}
     .badge{display:inline-block;background:#222;padding:2px 10px;border-radius:6px;font-size:12px;margin-right:6px}
-    .badge-tiktok{color:#25f4ee}
     .badge-facebook{color:#1877f2}
     .badge-direct{color:#8a8a8a}
     hr{border:0;border-top:1px solid #222;margin:18px 0}
@@ -50,14 +49,6 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       <label>Facebook Reel URL <span class="badge badge-facebook">resolved on TV</span></label>
       <input id="facebookUrl" type="url" placeholder="https://www.facebook.com/reel/123456" autofocus>
       <button class="btn-secondary" type="submit">Send to TV</button>
-    </form>
-
-    <hr>
-
-    <form id="formUrl">
-      <label>TikTok URL <span class="badge badge-tiktok">auto-resolve</span></label>
-      <input id="tiktokUrl" type="url" placeholder="https://www.tiktok.com/@user/video/123456">
-      <button class="btn-primary" type="submit">Send to TV</button>
     </form>
 
     <hr>
@@ -109,16 +100,6 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       });
     });
 
-    document.getElementById('formUrl').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var url = document.getElementById('tiktokUrl').value.trim();
-      if (!url) return;
-      setMsg('Resolving TikTok URL...');
-      send({ code: deviceCode, url: url }).then(function (data) {
-        setMsg(data.ok ? 'Sent! Video added to TV.' : 'Failed: ' + (data.error || 'unknown'), !!data.ok);
-      });
-    });
-
     document.getElementById('formDirect').addEventListener('submit', function (e) {
       e.preventDefault();
       var videoUrl = document.getElementById('directUrl').value.trim();
@@ -153,13 +134,16 @@ export function renderSetupPage(code: string, workerUrl: string): string {
             el.innerHTML = '<em>Feed is empty.</em>';
             return;
           }
-          el.innerHTML = data.items.map(function (it, i) {
+          el.innerHTML = data.items.filter(function (it) {
+            return it && it.source !== 'TikTok';
+          }).map(function (it, i) {
             return '<div class="item">' +
               '<span class="idx">' + (i + 1) + '.</span> ' +
               '<span class="src">[' + it.source + ']</span> ' +
               '<span class="ttl">' + (it.title || it.sourceUrl) + '</span>' +
             '</div>';
           }).join('');
+          if (!el.innerHTML) el.innerHTML = '<em>Feed is empty.</em>';
         });
     }
     loadList();
