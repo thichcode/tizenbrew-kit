@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        webView.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         webView.setWebViewClient(new WebViewClient());
         webView.loadUrl("file:///android_asset/web/index.html");
         webView.addJavascriptInterface(new VideoBridge(this), "AndroidBridge");
