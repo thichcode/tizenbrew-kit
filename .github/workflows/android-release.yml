@@ -50,11 +50,14 @@ jobs:
         working-directory: android/ShortVideoTV
         run: gradle assembleDebug -PappVersionName=${{ steps.version.outputs.VERSION }} -PappVersionCode=${{ github.run_number }}
 
+      - name: Rename APK
+        run: cp android/ShortVideoTV/app/build/outputs/apk/debug/app-debug.apk android/ShortVideoTV/app/build/outputs/apk/debug/ShortVideoTV.apk
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-v${{ steps.version.outputs.VERSION }}
           name: "ShortVideo TV Android v${{ steps.version.outputs.VERSION }}"
-          body: "Android TV APK build for shortvideo-tv v${{ steps.version.outputs.VERSION }}\n\nTrigger from GitHub Actions → Run workflow → select android-release.yml"
-          files: android/ShortVideoTV/app/build/outputs/apk/debug/app-debug.apk
+          body: "Android TV APK build for shortvideo-tv v${{ steps.version.outputs.VERSION }}"
+          files: android/ShortVideoTV/app/build/outputs/apk/debug/ShortVideoTV.apk
           fail_on_unmatched_files: true
