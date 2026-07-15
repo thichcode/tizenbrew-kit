@@ -116,7 +116,30 @@
     callback(item);
   }
 
+  var tikTokResolveCbId = 0;
+  var tikTokResolveCallbacks = {};
+
+  window.__onTikTokResult = function (id, result) {
+    var cb = tikTokResolveCallbacks[id];
+    if (cb) {
+      delete tikTokResolveCallbacks[id];
+      if (result && result.videoUrl) {
+        cb(result.videoUrl);
+      } else {
+        cb(null);
+      }
+    }
+  };
+
   function resolveTikTokOnTv(sourceUrl, callback) {
+    var androidBridge = window.AndroidBridge;
+    if (androidBridge && typeof androidBridge.resolveTikTok === 'function') {
+      var cbId = 'tk' + (++tikTokResolveCbId);
+      tikTokResolveCallbacks[cbId] = callback;
+      androidBridge.resolveTikTok(sourceUrl, cbId);
+      return;
+    }
+
     fetch(sourceUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Linux; Tizen 3.0) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/2.2 Chrome/63.0.3239.84 TV Safari/537.36',
@@ -649,6 +672,10 @@
       if (item) playItem(item);
     });
   }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && isPlayerOpen) closePlayer();
+  });
 
   window.addEventListener('keydown', onKeyDown, true);
   window.addEventListener('load', startApp);
