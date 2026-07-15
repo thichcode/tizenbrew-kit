@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPTV Player Test</title>
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>IPTV Player</h1>
+      <span id="channel-count"></span>
+    </header>
+    <div id="main">
+      <div id="player-container">
+        <video id="player" playsinline controls></video>
+        <div id="loading" class="loading" style="display:none;">Loading...</div>
+      </div>
+      <aside id="channel-list"></aside>
+    </div>
+    <footer id="status-bar">
+      <span id="now-playing">No channel selected</span>
+      <span id="status-text">Ready</span>
+    </footer>
+  </div>
+  <script type="module" src="src/inject.ts"></script>
+</body>
+</html>

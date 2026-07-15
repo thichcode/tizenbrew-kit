@@ -1,6 +1,6 @@
-# iptv-player
+# tizeniptv
 
-TV-friendly IPTV channel player for TizenBrew with full remote control support.
+Tizen IPTV channel player for TizenBrew with full remote control support.
 
 ## Features
 
@@ -15,13 +15,13 @@ TV-friendly IPTV channel player for TizenBrew with full remote control support.
 Install the published application module from TizenBrew:
 
 ```text
-@kv8n2oryk/iptv-player
+@kv8n2oryk/tizeniptv
 ```
 
 To build it locally:
 
 ```bash
-tizenbrew-kit create my-iptv -t iptv-player
+tizenbrew-kit create my-iptv -t tizeniptv
 cd my-iptv
 tizenbrew-kit dev
 tizenbrew-kit build

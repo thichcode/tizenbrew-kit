@@ -1,0 +1,12 @@
+{
+  "name": "facebook-reels-lite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tizenbrew-kit dev",
+    "build": "tizenbrew-kit build",
+    "package": "tizenbrew-kit package",
+    "doctor": "tizenbrew-kit doctor"
+  }
+}

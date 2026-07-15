@@ -1,10 +1,10 @@
 {
-  "name": "@kv8n2oryk/iptv-player",
-  "version": "0.5.7",
-  "description": "Simple IPTV player for TizenBrew with remote control",
+  "name": "@kv8n2oryk/tizeniptv",
+  "version": "1.2.5",
+  "description": "Tizen IPTV player for TizenBrew with remote control",
   "type": "module",
   "packageType": "app",
-  "appName": "IPTV Player",
+  "appName": "TizenIPTV",
   "appPath": "index.html",
   "keys": [],
   "files": [

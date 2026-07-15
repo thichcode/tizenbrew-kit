@@ -7,7 +7,7 @@ export interface Channel {
 }
 
 export const DEFAULT_PLAYLIST_URL =
-  'https://raw.githubusercontent.com/thichcode/thichcode/refs/heads/main/filtered_playlist.m3u';
+  'https://raw.githubusercontent.com/vuminhthanh12/vuminhthanh12/refs/heads/main/vmttv';
 
 export function fetchPlaylist(url = DEFAULT_PLAYLIST_URL): Promise<Channel[]> {
   return new Promise(function (resolve, reject) {

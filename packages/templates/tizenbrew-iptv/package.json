@@ -1,8 +1,9 @@
 {
-  "name": "@kv8n2oryk/iptv-player",
-  "version": "0.5.7",
-  "description": "Simple IPTV player for TizenBrew with remote control",
-  "type": "module",
+  "name": "tizenbrew-iptv",
+  "version": "0.1.9",
+  "description": "IPTV Player for TizenBrew with QR playlist setup",
+  "license": "MIT",
+  "private": false,
   "packageType": "app",
   "appName": "IPTV Player",
   "appPath": "index.html",
@@ -15,10 +16,8 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "tizenbrew-kit dev",
-    "build": "tizenbrew-kit build",
-    "package": "tizenbrew-kit package",
-    "doctor": "tizenbrew-kit doctor"
+    "pack:check": "npm pack --dry-run",
+    "publish:public": "npm publish --access public"
   },
   "keywords": [
     "iptv",
@@ -28,6 +27,5 @@
     "player",
     "m3u",
     "streaming"
-  ],
-  "license": "MIT"
+  ]
 }
