@@ -70,6 +70,14 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void log(String message) {
+            WebView wv = webViewRef.get();
+            if (wv == null) return;
+            final String js = "javascript:console.log('" + escapeJs(message) + "')";
+            wv.post(() -> wv.evaluateJavascript(js, null));
+        }
+
+        @JavascriptInterface
         public void resolveTikTok(final String pageUrl, final String callbackId) {
             new Thread(() -> {
                 try {

@@ -70,11 +70,14 @@
 
   function resolveItem(item, callback) {
     if (item.source === 'TikTok') {
+      if (playerLoadingEl) playerLoadingEl.textContent = 'Resolving TikTok...';
       resolveTikTokOnTv(item.sourceUrl, function (videoUrl) {
         if (videoUrl) {
           item.videoUrl = videoUrl;
+          if (playerLoadingEl) playerLoadingEl.textContent = 'URL: ' + (videoUrl.length > 80 ? videoUrl.slice(0, 80) + '...' : videoUrl);
         } else {
-          item.videoUrl = WORKER_URL + '/stream?url=' + encodeURIComponent(item.sourceUrl);
+          item.videoUrl = FALLBACK_RESOLVER_URL + '/play?mode=redirect&url=' + encodeURIComponent(item.sourceUrl) + '&api_key=' + encodeURIComponent(FALLBACK_API_KEY);
+          if (playerLoadingEl) playerLoadingEl.textContent = 'TikTok resolve failed, using fallback';
         }
         callback(item);
       });
