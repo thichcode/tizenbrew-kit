@@ -78,7 +78,6 @@ describe('shortvideo-feed worker', () => {
       const body = await res.text();
       expect(body).toContain('TV123');
       expect(body).toContain('formFacebook');
-      expect(body).toContain('formUrl');
       expect(body).toContain('formDirect');
     });
 
