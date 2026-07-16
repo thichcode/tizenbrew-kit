@@ -154,6 +154,8 @@ function createInjectHarness(playResults, options) {
     document: {
       createElement: createElement,
       getElementById: function (id) { return elements[id] || null; },
+      addEventListener: function (name, handler) { windowEvents[name] = handler; },
+      hidden: false,
     },
     encodeURIComponent: encodeURIComponent,
     fetch: function (url) {
