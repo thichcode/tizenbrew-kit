@@ -31,6 +31,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
     .info{color:#6a6a6a;font-size:13px;margin-top:18px;line-height:1.5;border-top:1px solid #222;padding-top:16px}
     .badge{display:inline-block;background:#222;padding:2px 10px;border-radius:6px;font-size:12px;margin-right:6px}
     .badge-facebook{color:#1877f2}
+    .badge-bilibili{color:#fb7299}
     .badge-direct{color:#8a8a8a}
     hr{border:0;border-top:1px solid #222;margin:18px 0}
     #list .item{padding:4px 0;border-bottom:1px solid #1a1a1a}
@@ -49,6 +50,14 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       <label>Facebook Reel URL <span class="badge badge-facebook">resolved on TV</span></label>
       <input id="facebookUrl" type="url" placeholder="https://www.facebook.com/reel/123456" autofocus>
       <button class="btn-secondary" type="submit">Send to TV</button>
+    </form>
+
+    <hr>
+
+    <form id="formBilibili">
+      <label>Bilibili.tv URL <span class="badge badge-bilibili">resolved on TV</span></label>
+      <input id="bilibiliUrl" type="url" placeholder="https://www.bilibili.tv/video/123456">
+      <button class="btn-secondary" type="submit" style="background:#fb7299;border-color:#fb7299">Send to TV</button>
     </form>
 
     <hr>
@@ -95,6 +104,16 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       var url = document.getElementById('facebookUrl').value.trim();
       if (!url) return;
       setMsg('Sending Facebook Reel...');
+      send({ code: deviceCode, url: url }).then(function (data) {
+        setMsg(data.ok ? 'Sent! Video added to TV.' : 'Failed: ' + (data.error || 'unknown'), !!data.ok);
+      });
+    });
+
+    document.getElementById('formBilibili').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var url = document.getElementById('bilibiliUrl').value.trim();
+      if (!url) return;
+      setMsg('Sending Bilibili video...');
       send({ code: deviceCode, url: url }).then(function (data) {
         setMsg(data.ok ? 'Sent! Video added to TV.' : 'Failed: ' + (data.error || 'unknown'), !!data.ok);
       });

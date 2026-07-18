@@ -102,6 +102,41 @@
         });
       return;
     }
+
+    if (item.source === 'Bilibili') {
+      setBilibiliFallbacks(item);
+      if (isPreResolvedBilibili(item)) {
+        callback(item);
+        return;
+      }
+
+      fetch(FALLBACK_RESOLVER_URL + '/resolve?url=' + encodeURIComponent(item.sourceUrl), {
+        headers: { 'X-API-Key': FALLBACK_API_KEY }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok && data.resolved) {
+            if (data.resolved.videoUrl) {
+              item.videoUrl = data.resolved.videoUrl;
+            } else {
+              item.videoUrl = item._redirectUrl;
+            }
+            if (data.resolved.title) {
+              item.title = data.resolved.title;
+              updateItemTitleInDom(item.id, data.resolved.title);
+            }
+          } else {
+            item.videoUrl = item._redirectUrl;
+          }
+          callback(item);
+        })
+        .catch(function () {
+          item.videoUrl = item._redirectUrl;
+          callback(item);
+        });
+      return;
+    }
+
     callback(item);
   }
 
@@ -113,13 +148,26 @@
     return FALLBACK_RESOLVER_URL + '/play?mode=' + mode + '&url=' + encodeURIComponent(sourceUrl) + '&api_key=' + encodeURIComponent(FALLBACK_API_KEY);
   }
 
+  function buildBilibiliPlayUrl(sourceUrl, mode) {
+    return FALLBACK_RESOLVER_URL + '/play?mode=' + mode + '&url=' + encodeURIComponent(sourceUrl) + '&api_key=' + encodeURIComponent(FALLBACK_API_KEY);
+  }
+
   function setFacebookFallbacks(item) {
     item._redirectUrl = buildFacebookPlayUrl(item.sourceUrl, 'redirect');
     item._proxyUrl = buildFacebookPlayUrl(item.sourceUrl, 'proxy');
   }
 
+  function setBilibiliFallbacks(item) {
+    item._redirectUrl = buildBilibiliPlayUrl(item.sourceUrl, 'redirect');
+    item._proxyUrl = buildBilibiliPlayUrl(item.sourceUrl, 'proxy');
+  }
+
   function isPreResolvedFacebook(item) {
     return item && item.source === 'Facebook' && item.sourceUrl && item.videoUrl && item.videoUrl !== item.sourceUrl;
+  }
+
+  function isPreResolvedBilibili(item) {
+    return item && item.source === 'Bilibili' && item.sourceUrl && item.videoUrl && item.videoUrl !== item.sourceUrl;
   }
 
   function updateItemTitleInDom(itemId, newTitle) {
@@ -225,8 +273,8 @@
   function resolveTitlesInBackground() {
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      if (item.source !== 'Facebook') continue;
-      if (item.title !== 'Facebook Reel' && item.title !== '(untitled)') continue;
+      if (item.source !== 'Facebook' && item.source !== 'Bilibili') continue;
+      if (item.title !== 'Facebook Reel' && item.title !== 'Bilibili Video' && item.title !== '(untitled)') continue;
       (function (idx) {
         fetch(FALLBACK_RESOLVER_URL + '/resolve?url=' + encodeURIComponent(item.sourceUrl), {
           headers: { 'X-API-Key': FALLBACK_API_KEY }
@@ -307,7 +355,7 @@
     setTimeout(focusSelected, 60);
   }
 
-  var facebookFallbackStage = 0;
+  var sourceFallbackStage = 0;
 
   function handleMediaAttemptFailure(item, requestId, attemptId, error) {
     if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId) return;
@@ -327,7 +375,7 @@
       pendingMediaFailureTimer = setTimeout(function () {
         if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId || scheduleId !== mediaFailureScheduleId) return;
         pendingMediaFailureTimer = null;
-        if (tryNextFacebookFallback(item, requestId)) return;
+        if (tryNextFallback(item, requestId)) return;
         showPlaybackError('Cannot play: ' + (error && error.message ? error.message : 'format not supported'));
       }, 0);
       return;
@@ -388,18 +436,19 @@
     }
   }
 
-  function tryNextFacebookFallback(item, requestId) {
-    if (!isPlayerOpen || requestId !== playRequestId || !item || item.source !== 'Facebook') return false;
+  function tryNextFallback(item, requestId) {
+    if (!isPlayerOpen || requestId !== playRequestId || !item) return false;
+    if (item.source !== 'Facebook' && item.source !== 'Bilibili') return false;
 
     var fallbackUrl;
-    if (facebookFallbackStage === 0) {
+    if (sourceFallbackStage === 0) {
       fallbackUrl = item._redirectUrl;
       if (playerLoadingEl) {
         playerLoadingEl.style.display = 'block';
         playerLoadingEl.style.color = '#888';
         playerLoadingEl.textContent = 'Refreshing video URL...';
       }
-    } else if (facebookFallbackStage === 1) {
+    } else if (sourceFallbackStage === 1) {
       fallbackUrl = item._proxyUrl;
       if (playerLoadingEl) {
         playerLoadingEl.style.display = 'block';
@@ -411,7 +460,7 @@
     }
     if (!fallbackUrl) return false;
 
-    facebookFallbackStage += 1;
+    sourceFallbackStage += 1;
     startMediaAttempt(item, requestId, fallbackUrl, true);
     return true;
   }
@@ -420,7 +469,7 @@
     clearError();
     isPlayerOpen = true;
     var requestId = ++playRequestId;
-    facebookFallbackStage = 0;
+    sourceFallbackStage = 0;
     if (playerEl) playerEl.classList.add('active');
     if (playerLoadingEl) {
       playerLoadingEl.style.display = 'block';
@@ -436,7 +485,7 @@
 
     resolveItem(item, function (resolved) {
       if (!isPlayerOpen || requestId !== playRequestId) return;
-      if (resolved.source === 'Facebook' && resolved.videoUrl === resolved._redirectUrl) facebookFallbackStage = 1;
+      if ((resolved.source === 'Facebook' || resolved.source === 'Bilibili') && resolved.videoUrl === resolved._redirectUrl) sourceFallbackStage = 1;
       if (playerTitleEl) playerTitleEl.textContent = resolved.title;
       video.autoplay = true;
       video.controls = false;

@@ -1,6 +1,11 @@
 name: Android TV Release
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
   workflow_dispatch:
 
 permissions:

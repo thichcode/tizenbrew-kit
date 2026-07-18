@@ -74,6 +74,11 @@ function isValidFacebookUrl(value: unknown): value is string {
     /^https?:\/\/fb\.watch\//i.test(value.trim());
 }
 
+function isValidBilibiliUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  return /^https?:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?video\//i.test(value.trim());
+}
+
 function feedKey(code: string): string {
   return `feed:${code}`;
 }
@@ -89,6 +94,8 @@ function generateId(sourceUrl: string): string {
   if (s) return `fb_${s[1]}`;
   const t = sourceUrl.match(/\/video\/(\d{9,19})/);
   if (t) return `tk_${t[1]}`;
+  const b = sourceUrl.match(/\/(?:[a-z]{2}\/)?video\/(\d{1,20})/);
+  if (b) return `bl_${b[1]}`;
   return `v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -244,6 +251,31 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
       duration: 0,
       ...(resolvedAt ? { resolvedAt } : {}),
     };
+  } else if (isValidBilibiliUrl(platformUrl)) {
+    const hasFallbackResolver = !!env.FALLBACK_RESOLVER_URL;
+    const fallbackResolved = hasFallbackResolver ? await callFallbackResolver(env, platformUrl) : null;
+    let blTitle = 'Bilibili Video';
+    let blVideoUrl: string = platformUrl;
+    let blThumbnailUrl = '';
+    let resolvedAt: string | undefined;
+
+    if (fallbackResolved) {
+      blVideoUrl = fallbackResolved.videoUrl;
+      blTitle = fallbackResolved.title || 'Bilibili Video';
+      blThumbnailUrl = fallbackResolved.thumbnailUrl || '';
+      resolvedAt = new Date().toISOString();
+    }
+
+    feedItem = {
+      id: generateId(platformUrl),
+      title: blTitle,
+      source: 'Bilibili',
+      sourceUrl: platformUrl,
+      videoUrl: blVideoUrl,
+      thumbnailUrl: blThumbnailUrl,
+      duration: 0,
+      ...(resolvedAt ? { resolvedAt } : {}),
+    };
   } else {
     return json({ error: 'Invalid or unsupported URL' }, 400);
   }
@@ -287,7 +319,7 @@ async function handleResolve(request: Request, env: Env): Promise<Response> {
     return json({ ok: true, resolved });
   }
 
-  if (isValidFacebookUrl(trimmed)) {
+  if (isValidFacebookUrl(trimmed) || isValidBilibiliUrl(trimmed)) {
     return json({ ok: true, resolved: { url: trimmed, needsExternal: true, hint: 'Resolve via yt-dlp server directly' } });
   }
 
@@ -330,6 +362,11 @@ async function handleProxy(request: Request): Promise<Response> {
         const setCookie = pageRes.headers.get('set-cookie');
         if (setCookie) cookies = setCookie.split(';')[0];
       } catch { /* ignore */ }
+    }
+
+    if (/bilibili\.tv/.test(targetUrl)) {
+      headers['Referer'] = 'https://www.bilibili.tv/';
+      headers['Origin'] = 'https://www.bilibili.tv';
     }
 
     if (cookies) headers['Cookie'] = cookies;

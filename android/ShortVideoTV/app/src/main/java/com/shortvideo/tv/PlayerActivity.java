@@ -58,7 +58,16 @@ public class PlayerActivity extends AppCompatActivity {
 
         Map<String, String> headers = new HashMap<>();
         headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 10; Android TV) AppleWebKit/537.36");
-        headers.put("Referer", "https://www.facebook.com/");
+        if (videoUrl != null) {
+            String urlLower = videoUrl.toLowerCase();
+            if (urlLower.contains("bilivideo.com") || urlLower.contains("bilibili")) {
+                headers.put("Referer", "https://www.bilibili.tv/");
+            } else if (urlLower.contains("tiktokcdn.com") || urlLower.contains("tiktokv.com") || urlLower.contains("byteoversea.com")) {
+                headers.put("Referer", "https://www.tiktok.com/");
+            } else {
+                headers.put("Referer", "https://www.facebook.com/");
+            }
+        }
 
         DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
                 .setDefaultRequestProperties(headers)

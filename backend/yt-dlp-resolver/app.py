@@ -42,10 +42,11 @@ app.add_middleware(
 API_KEY = os.environ.get("API_KEY", "")
 YT_DLP = os.environ.get("YT_DLP_PATH", "yt-dlp")
 FACEBOOK_FORMAT = "hd/sd/b"
-SOURCE_HOST_SUFFIXES = ("facebook.com", "fb.watch", "tiktok.com")
+SOURCE_HOST_SUFFIXES = ("facebook.com", "fb.watch", "tiktok.com", "bilibili.tv")
 TIKTOK_CDN_HOST_SUFFIXES = ("tiktok.com", "tiktokcdn.com", "tiktokv.com", "byteoversea.com")
-VIDEO_CDN_HOST_SUFFIXES = ("fbcdn.net", *TIKTOK_CDN_HOST_SUFFIXES)
+VIDEO_CDN_HOST_SUFFIXES = ("fbcdn.net", "bilivideo.com", *TIKTOK_CDN_HOST_SUFFIXES)
 
+BILIBILI_FORMAT = "best[ext=mp4][vcodec^=avc1]/best[ext=mp4]/best"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 TIKTOK_REDIRECT_STATUSES = (301, 302, 303, 307, 308)
 
@@ -146,6 +147,10 @@ def is_tiktok_url(url: str) -> bool:
 
 def is_facebook_url(url: str) -> bool:
     return bool(re.search(r"(?:www\.|m\.)?(?:facebook\.com|fb\.watch)", url))
+
+
+def is_bilibili_url(url: str) -> bool:
+    return bool(re.search(r"(?:www\.)?bilibili\.tv", url))
 
 
 def tiktok_open_url(url: str):
@@ -263,6 +268,9 @@ def proxy_headers(source_url: str, range_header: str | None) -> dict[str, str]:
     elif is_tiktok_url(source_url) or url_has_host_suffix(source_url, TIKTOK_CDN_HOST_SUFFIXES):
         headers["Referer"] = "https://www.tiktok.com/"
         headers["Origin"] = "https://www.tiktok.com"
+    elif is_bilibili_url(source_url) or "bilivideo.com" in source_url:
+        headers["Referer"] = "https://www.bilibili.tv/"
+        headers["Origin"] = "https://www.bilibili.tv"
     if range_header:
         headers["Range"] = range_header
     return headers
@@ -335,6 +343,30 @@ def resolve_and_get_cdn(url: str) -> str:
             return lines[0]
         raise HTTPException(status_code=422, detail="No video URL found")
 
+    if is_bilibili_url(url):
+        cmd = [
+            YT_DLP,
+            "-f",
+            BILIBILI_FORMAT,
+            "--get-url",
+            "--user-agent",
+            UA,
+            url,
+        ]
+        try:
+            r = subprocess.run(cmd, capture_output=True, timeout=60,
+                               encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
+        except subprocess.TimeoutExpired:
+            raise HTTPException(status_code=504, detail="yt-dlp resolve timed out")
+        if r.returncode != 0:
+            raise HTTPException(status_code=422, detail=r.stderr.strip()[-500:] or "yt-dlp failed")
+        lines = [l.strip() for l in r.stdout.strip().split("\n") if l.strip().startswith("http")]
+        if lines:
+            return lines[0]
+        raise HTTPException(status_code=422, detail="No video URL found")
+
     return url
 
 
@@ -366,6 +398,13 @@ def resolve(url: str, x_api_key: str | None = Header(None)):
             "-f",
             FACEBOOK_FORMAT,
             "--no-check-certificates",
+            "--user-agent",
+            UA,
+        ]
+    elif is_bilibili_url(url):
+        extra_args = [
+            "-f",
+            BILIBILI_FORMAT,
             "--user-agent",
             UA,
         ]
