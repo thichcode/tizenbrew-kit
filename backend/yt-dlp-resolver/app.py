@@ -11,7 +11,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
@@ -362,33 +362,74 @@ def resolve_and_get_cdn(url: str) -> str:
     return url
 
 
-async def stream_bilibili_merged(source_url: str) -> StreamingResponse:
-    cmd = [YT_DLP, "-f", BILIBILI_FORMAT, "--merge-output-format", "mp4",
-           "--user-agent", UA, "-o", "-", source_url]
+def build_bilibili_dash_mpd(source_url: str) -> str:
+    extra_args = ["-f", BILIBILI_FORMAT, "--user-agent", UA]
+    r = run_yt_dlp(source_url, extra_args)
+    if r.returncode != 0:
+        raise HTTPException(status_code=422, detail=r.stderr.strip()[-500:] or "yt-dlp failed")
     try:
-        process = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-        )
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
+        data = json.loads(r.stdout.strip())
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Failed to parse yt-dlp output")
 
-    async def iter_merged():
-        try:
-            while True:
-                chunk = await process.stdout.read(256 * 1024)
-                if not chunk:
-                    break
-                yield chunk
-        finally:
-            if process.returncode is None:
-                process.kill()
-            await process.wait()
+    video_url = None
+    audio_url = None
+    video_codec = "avc1.64001E"
+    audio_codec = "mp4a.40.2"
+    width = 640
+    height = 360
+    bandwidth = 500000
+    abr = 96000
+    duration = 0
 
-    return StreamingResponse(
-        iter_merged(),
-        media_type="video/mp4",
-        headers={"Content-Disposition": "inline"},
-    )
+    for fmt in data.get("requested_formats") or []:
+        fu = fmt.get("url") or ""
+        vc = fmt.get("vcodec", "none")
+        if fu and vc != "none":
+            video_url = fu
+            video_codec = vc
+            width = fmt.get("width", width)
+            height = fmt.get("height", height)
+            bandwidth = fmt.get("tbr", fmt.get("vbr", bandwidth)) * 1000
+        elif fu and fmt.get("acodec", "none") != "none":
+            audio_url = fu
+            audio_codec = fmt.get("acodec", audio_codec)
+            abr = fmt.get("abr", fmt.get("tbr", abr))
+
+    if not video_url or not audio_url:
+        raise HTTPException(status_code=422, detail="Could not extract both video and audio streams")
+
+    dur_float = data.get("duration")
+    if dur_float:
+        duration = int(dur_float)
+
+    # escape ampersands in URLs for XML
+    ve = video_url.replace("&", "&amp;")
+    ae = audio_url.replace("&", "&amp;")
+
+    lines = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        f'<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" type="static" minBufferTime="PT2S"',
+    ]
+    if duration > 0:
+        h, m = divmod(duration, 3600)
+        m, s = divmod(m, 60)
+        lines[1] += f' mediaPresentationDuration="PT{int(h)}H{int(m)}M{int(s)}S"'
+    lines[1] += ">"
+    lines.append("  <Period>")
+    lines.append(f'    <AdaptationSet mimeType="video/mp4" contentType="video" width="{width}" height="{height}" segmentAlignment="true" startWithSAP="1">')
+    lines.append(f'      <Representation bandwidth="{bandwidth}" codecs="{video_codec}" id="video">')
+    lines.append(f"        <BaseURL>{ve}</BaseURL>")
+    lines.append("      </Representation>")
+    lines.append("    </AdaptationSet>")
+    lines.append(f'    <AdaptationSet mimeType="audio/mp4" contentType="audio" segmentAlignment="true" startWithSAP="1">')
+    lines.append(f'      <Representation bandwidth="{int(abr) * 1000}" codecs="{audio_codec}" id="audio">')
+    lines.append(f"        <BaseURL>{ae}</BaseURL>")
+    lines.append("      </Representation>")
+    lines.append("    </AdaptationSet>")
+    lines.append("  </Period>")
+    lines.append("</MPD>")
+    return "\n".join(lines)
 
 
 # ─── Routes ───────────────────────────────────────────────────────
@@ -445,6 +486,17 @@ def resolve(url: str, x_api_key: str | None = Header(None)):
     ))
 
 
+@app.get("/dash")
+def dash(url: str, x_api_key: str | None = Header(None), api_key: str | None = Query(None)):
+    check_api_key(x_api_key or api_key)
+    if not url or not (url.startswith("http://") or url.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Invalid or missing url parameter")
+    if not is_bilibili_url(url):
+        raise HTTPException(status_code=400, detail="Only Bilibili URLs supported")
+    mpd = build_bilibili_dash_mpd(url)
+    return Response(content=mpd, media_type="application/dash+xml")
+
+
 @app.get("/play")
 async def play(request: Request, url: str, mode: str = Query("proxy"),
                direct: str | None = Query(None),
@@ -462,8 +514,6 @@ async def play(request: Request, url: str, mode: str = Query("proxy"),
     else:
         if not url_has_host_suffix(url, SOURCE_HOST_SUFFIXES):
             raise HTTPException(status_code=400, detail="Unsupported source host")
-        if is_bilibili_url(url) and mode == "proxy":
-            return await stream_bilibili_merged(url)
         cdn_url = await run_in_threadpool(resolve_and_get_cdn, url)
     if not url_has_host_suffix(cdn_url, VIDEO_CDN_HOST_SUFFIXES):
         raise HTTPException(status_code=502, detail="Resolver returned unsupported video CDN host")

@@ -395,8 +395,8 @@
     var androidBridge = window.AndroidBridge;
     if (androidBridge && typeof androidBridge.openVideo === 'function') {
       var androidUrl = sourceUrl;
-      if (item && item.source === 'Bilibili' && item._proxyUrl) {
-        androidUrl = item._proxyUrl;
+      if (item && item.source === 'Bilibili' && item.sourceUrl) {
+        androidUrl = FALLBACK_RESOLVER_URL + '/dash?url=' + encodeURIComponent(item.sourceUrl) + '&api_key=' + encodeURIComponent(FALLBACK_API_KEY);
       }
       androidBridge.openVideo(androidUrl, item && item.title || '');
       return;
