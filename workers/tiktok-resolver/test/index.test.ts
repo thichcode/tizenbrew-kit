@@ -78,7 +78,6 @@ describe('shortvideo-feed worker', () => {
       const body = await res.text();
       expect(body).toContain('TV123');
       expect(body).toContain('formFacebook');
-      expect(body).toContain('formBilibili');
       expect(body).toContain('formDirect');
     });
 
@@ -227,94 +226,6 @@ describe('shortvideo-feed worker', () => {
     });
   });
 
-  describe('POST /submit (Bilibili)', () => {
-    it('stores pre-resolved Bilibili CDN URL when fallback resolver succeeds', async () => {
-      const testEnv = env({
-        FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
-        FALLBACK_API_KEY: 'secret',
-      });
-      const rawUrl = 'https://www.bilibili.tv/video/123456';
-      mockFetch(200, {
-        ok: true,
-        resolved: {
-          videoUrl: 'https://upos-sz-mirrorkodo.bilivideo.com/video.mp4',
-          title: 'Bilibili Video Title',
-          thumbnailUrl: 'https://i0.hdslb.com/bfs/archive/thumb.jpg',
-        },
-      });
-
-      const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, testEnv);
-      expect(res.status).toBe(200);
-      const item = (await json(res)).item as Record<string, unknown>;
-      expect(item.source).toBe('Bilibili');
-      expect(item.sourceUrl).toBe(rawUrl);
-      expect(item.videoUrl).toBe('https://upos-sz-mirrorkodo.bilivideo.com/video.mp4');
-      expect(item.title).toBe('Bilibili Video Title');
-      expect(item.thumbnailUrl).toBe('https://i0.hdslb.com/bfs/archive/thumb.jpg');
-      expect(typeof item.resolvedAt).toBe('string');
-      expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toEqual(
-        'https://resolver.example.com/resolve?url=' + encodeURIComponent(rawUrl),
-      );
-      expect(vi.mocked(globalThis.fetch).mock.calls[0][1]).toEqual(
-        expect.objectContaining({ headers: { 'X-API-Key': 'secret' } }),
-      );
-    });
-
-    it('stores unresolved Bilibili URL when fallback resolver fails', async () => {
-      const testEnv = env({ FALLBACK_RESOLVER_URL: 'https://resolver.example.com' });
-      const rawUrl = 'https://www.bilibili.tv/video/123456';
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ error: 'resolver failed' }), {
-          status: 502,
-          headers: { 'content-type': 'application/json' },
-        }),
-      ));
-
-      const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, testEnv);
-      expect(res.status).toBe(200);
-      const item = (await json(res)).item as Record<string, unknown>;
-      expect(item.source).toBe('Bilibili');
-      expect(item.sourceUrl).toBe(rawUrl);
-      expect(item.videoUrl).toBe(rawUrl);
-      expect(item.title).toBe('Bilibili Video');
-      expect(item.resolvedAt).toBeUndefined();
-    });
-
-    it('uses fallback resolver title when backend succeeds', async () => {
-      const testEnv = env({
-        FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
-        FALLBACK_API_KEY: 'secret',
-      });
-      const rawUrl = 'https://www.bilibili.tv/video/123456';
-      mockFetch(200, {
-        ok: true,
-        resolved: {
-          videoUrl: 'https://upos-sz-mirrorkodo.bilivideo.com/video.mp4',
-          title: 'Bilibili Real Title from Resolver',
-          thumbnailUrl: 'https://i0.hdslb.com/bfs/archive/thumb.jpg',
-        },
-      });
-
-      const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, testEnv);
-      expect(res.status).toBe(200);
-      const item = (await json(res)).item as Record<string, unknown>;
-      expect(item.videoUrl).toBe('https://upos-sz-mirrorkodo.bilivideo.com/video.mp4');
-      expect(item.title).toBe('Bilibili Real Title from Resolver');
-      expect(typeof item.resolvedAt).toBe('string');
-    });
-
-    it('accepts bilibili.tv/en/video/ path format', async () => {
-      const rawUrl = 'https://www.bilibili.tv/en/video/4789462782039057';
-      mockHtmlFetch('<html></html>');
-
-      const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, env());
-      expect(res.status).toBe(200);
-      const item = (await json(res)).item as Record<string, unknown>;
-      expect(item.source).toBe('Bilibili');
-      expect(item.sourceUrl).toBe(rawUrl);
-    });
-  });
-
   describe('POST /submit (TikTok)', () => {
     it('resolves TikTok', async () => {
       mockFetch(200, { itemInfo: { itemStruct: { id: '123', desc: 'Tik', author: { uniqueId: 'u' }, video: { playAddr: 'https://tiktok.com/v.mp4' } } } });
@@ -370,14 +281,5 @@ describe('shortvideo-feed worker', () => {
       expect((data.resolved as Record<string, unknown>).needsExternal).toBe(true);
     });
 
-    it('returns raw Bilibili URL with needsExternal flag', async () => {
-      const res = await worker.fetch(
-        new Request('https://feed.example.com/resolve?url=https://www.bilibili.tv/video/123456'),
-        env(),
-      );
-      expect(res.status).toBe(200);
-      const data = (await json(res)) as Record<string, unknown>;
-      expect((data.resolved as Record<string, unknown>).needsExternal).toBe(true);
-    });
   });
 });
