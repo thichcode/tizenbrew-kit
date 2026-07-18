@@ -394,7 +394,11 @@
   function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     var androidBridge = window.AndroidBridge;
     if (androidBridge && typeof androidBridge.openVideo === 'function') {
-      androidBridge.openVideo(sourceUrl, item && item.title || '');
+      var androidUrl = sourceUrl;
+      if (item && item.source === 'Bilibili' && item._proxyUrl) {
+        androidUrl = item._proxyUrl;
+      }
+      androidBridge.openVideo(androidUrl, item && item.title || '');
       return;
     }
 

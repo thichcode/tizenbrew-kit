@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -46,7 +47,7 @@ SOURCE_HOST_SUFFIXES = ("facebook.com", "fb.watch", "tiktok.com", "bilibili.tv")
 TIKTOK_CDN_HOST_SUFFIXES = ("tiktok.com", "tiktokcdn.com", "tiktokv.com", "byteoversea.com")
 VIDEO_CDN_HOST_SUFFIXES = ("fbcdn.net", "bilivideo.com", *TIKTOK_CDN_HOST_SUFFIXES)
 
-BILIBILI_FORMAT = "best[ext=mp4][vcodec^=avc1]/best[ext=mp4]/best"
+BILIBILI_FORMAT = "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 TIKTOK_REDIRECT_STATUSES = (301, 302, 303, 307, 308)
 
@@ -237,13 +238,14 @@ def extract_video_url(data: dict) -> str | None:
     url = data.get("url") or ""
     if url and url.startswith("http"):
         return url
-    for fmt in reversed(data.get("formats") or []):
-        fu = fmt.get("url") or ""
-        if fu and fu.startswith("http"):
-            return fu
+    # Prefer selected (requested) DASH formats over full list
     for fmt in data.get("requested_formats") or []:
         fu = fmt.get("url") or ""
-        if fu and fu.startswith("http"):
+        if fu and fu.startswith("http") and fmt.get("vcodec", "none") != "none":
+            return fu
+    for fmt in reversed(data.get("formats") or []):
+        fu = fmt.get("url") or ""
+        if fu and fu.startswith("http") and fmt.get("vcodec", "none") != "none":
             return fu
     return None
 
@@ -344,30 +346,49 @@ def resolve_and_get_cdn(url: str) -> str:
         raise HTTPException(status_code=422, detail="No video URL found")
 
     if is_bilibili_url(url):
-        cmd = [
-            YT_DLP,
-            "-f",
-            BILIBILI_FORMAT,
-            "--get-url",
-            "--user-agent",
-            UA,
-            url,
-        ]
-        try:
-            r = subprocess.run(cmd, capture_output=True, timeout=60,
-                               encoding="utf-8", errors="replace")
-        except FileNotFoundError:
-            raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
-        except subprocess.TimeoutExpired:
-            raise HTTPException(status_code=504, detail="yt-dlp resolve timed out")
+        extra_args = ["-f", BILIBILI_FORMAT, "--user-agent", UA]
+        r = run_yt_dlp(url, extra_args)
         if r.returncode != 0:
             raise HTTPException(status_code=422, detail=r.stderr.strip()[-500:] or "yt-dlp failed")
-        lines = [l.strip() for l in r.stdout.strip().split("\n") if l.strip().startswith("http")]
-        if lines:
-            return lines[0]
-        raise HTTPException(status_code=422, detail="No video URL found")
+        try:
+            data = json.loads(r.stdout.strip())
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Failed to parse yt-dlp output")
+        video_url = extract_video_url(data)
+        if not video_url:
+            raise HTTPException(status_code=422, detail="No video URL found")
+        return video_url
 
     return url
+
+
+async def stream_bilibili_merged(source_url: str) -> StreamingResponse:
+    cmd = [YT_DLP, "-f", BILIBILI_FORMAT, "--merge-output-format", "mp4",
+           "--user-agent", UA, "-o", "-", source_url]
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
+
+    async def iter_merged():
+        try:
+            while True:
+                chunk = await process.stdout.read(256 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            if process.returncode is None:
+                process.kill()
+            await process.wait()
+
+    return StreamingResponse(
+        iter_merged(),
+        media_type="video/mp4",
+        headers={"Content-Disposition": "inline"},
+    )
 
 
 # ─── Routes ───────────────────────────────────────────────────────
@@ -441,6 +462,8 @@ async def play(request: Request, url: str, mode: str = Query("proxy"),
     else:
         if not url_has_host_suffix(url, SOURCE_HOST_SUFFIXES):
             raise HTTPException(status_code=400, detail="Unsupported source host")
+        if is_bilibili_url(url) and mode == "proxy":
+            return await stream_bilibili_merged(url)
         cdn_url = await run_in_threadpool(resolve_and_get_cdn, url)
     if not url_has_host_suffix(cdn_url, VIDEO_CDN_HOST_SUFFIXES):
         raise HTTPException(status_code=502, detail="Resolver returned unsupported video CDN host")
