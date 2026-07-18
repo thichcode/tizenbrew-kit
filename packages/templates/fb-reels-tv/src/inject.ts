@@ -105,35 +105,7 @@
 
     if (item.source === 'Bilibili') {
       setBilibiliFallbacks(item);
-      if (isPreResolvedBilibili(item)) {
-        callback(item);
-        return;
-      }
-
-      fetch(FALLBACK_RESOLVER_URL + '/resolve?url=' + encodeURIComponent(item.sourceUrl), {
-        headers: { 'X-API-Key': FALLBACK_API_KEY }
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data.ok && data.resolved) {
-            if (data.resolved.videoUrl) {
-              item.videoUrl = data.resolved.videoUrl;
-            } else {
-              item.videoUrl = item._redirectUrl;
-            }
-            if (data.resolved.title) {
-              item.title = data.resolved.title;
-              updateItemTitleInDom(item.id, data.resolved.title);
-            }
-          } else {
-            item.videoUrl = item._redirectUrl;
-          }
-          callback(item);
-        })
-        .catch(function () {
-          item.videoUrl = item._redirectUrl;
-          callback(item);
-        });
+      callback(item);
       return;
     }
 
@@ -402,6 +374,11 @@
       return;
     }
 
+    if (item && item.source === 'Bilibili') {
+      showPlaybackError('Bilibili requires Android TV');
+      return;
+    }
+
     var attemptId = ++mediaAttemptId;
     mediaFailureScheduleId += 1;
     if (pendingMediaFailureTimer) {
@@ -443,6 +420,7 @@
   function tryNextFallback(item, requestId) {
     if (!isPlayerOpen || requestId !== playRequestId || !item) return false;
     if (item.source !== 'Facebook' && item.source !== 'Bilibili') return false;
+    if (item.source === 'Bilibili') return false;
 
     var fallbackUrl;
     if (sourceFallbackStage === 0) {

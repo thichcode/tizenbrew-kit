@@ -497,6 +497,31 @@ def dash(url: str, x_api_key: str | None = Header(None), api_key: str | None = Q
     return Response(content=mpd, media_type="application/dash+xml")
 
 
+async def stream_bilibili_merged(source_url: str) -> StreamingResponse:
+    cmd = [YT_DLP, "-f", BILIBILI_FORMAT, "--merge-output-format", "mp4",
+           "--user-agent", UA, "-o", "-", source_url]
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
+
+    async def iter_merged():
+        try:
+            while True:
+                chunk = await process.stdout.read(256 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            if process.returncode is None:
+                process.kill()
+            await process.wait()
+
+    return StreamingResponse(iter_merged(), media_type="video/mp4")
+
+
 @app.get("/play")
 async def play(request: Request, url: str, mode: str = Query("proxy"),
                direct: str | None = Query(None),
@@ -506,6 +531,14 @@ async def play(request: Request, url: str, mode: str = Query("proxy"),
         raise HTTPException(status_code=400, detail="Invalid or missing url parameter")
     if mode not in ("redirect", "proxy"):
         raise HTTPException(status_code=400, detail="Invalid mode")
+
+    if is_bilibili_url(url):
+        if mode == "proxy":
+            return await stream_bilibili_merged(url)
+        # redirect mode: browser goes to proxy URL for merged mp4 streaming
+        api = x_api_key or api_key or ""
+        proxy_url = f"/play?mode=proxy&url={url}&api_key={api}"
+        return RedirectResponse(proxy_url, status_code=302)
 
     if direct == "1":
         if not url_has_host_suffix(url, VIDEO_CDN_HOST_SUFFIXES):
