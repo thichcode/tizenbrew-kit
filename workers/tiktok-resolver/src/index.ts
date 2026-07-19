@@ -28,6 +28,8 @@ export interface Env {
 const FEED_TTL = 48 * 60 * 60;
 const CACHE_TTL = 60 * 60;
 const MAX_ITEMS = 50;
+const MAX_SUGGESTIONS = 10;
+const SUGGEST_COUNT = 3;
 const WORKER_URL = 'https://shortvideo-feed.dvt-kisu.workers.dev';
 
 function json(body: unknown, status = 200): Response {
@@ -80,6 +82,10 @@ function feedKey(code: string): string {
   return `feed:${code}`;
 }
 
+function suggestKey(code: string): string {
+  return `suggest:${code}`;
+}
+
 function cacheKey(url: string): string {
   return `cache:${url.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 100)}`;
 }
@@ -92,6 +98,43 @@ function generateId(sourceUrl: string): string {
   const t = sourceUrl.match(/\/video\/(\d{9,19})/);
   if (t) return `tk_${t[1]}`;
   return `v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function generateSuggestions(url: string): string[] {
+  const results: string[] = [];
+  const m = url.match(/(\/reel\/)(\d+)(.*)/);
+  if (!m) return results;
+
+  const prefix = m[1];
+  const numStr = m[2];
+  const suffix = m[3] || '';
+  const num = BigInt(numStr);
+  const len = numStr.length;
+
+  const offsets = [3, 7, 13];
+  for (const offset of offsets) {
+    const candidate = num + BigInt(offset);
+    const padded = candidate.toString().padStart(len, '0');
+    if (padded.length <= len) {
+      const newUrl = url.slice(0, url.indexOf(prefix) + prefix.length) + padded + suffix;
+      if (newUrl !== url) results.push(newUrl);
+    }
+  }
+  return results;
+}
+
+async function readSuggestions(env: Env, code: string): Promise<FeedItem[]> {
+  const raw = await env.FEED_ITEMS.get(suggestKey(code));
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw) as FeedItem[];
+  } catch {
+    return [];
+  }
+}
+
+async function writeSuggestions(env: Env, code: string, items: FeedItem[]): Promise<void> {
+  await env.FEED_ITEMS.put(suggestKey(code), JSON.stringify(items), { expirationTtl: FEED_TTL });
 }
 
 async function readFeed(env: Env, code: string): Promise<FeedItem[]> {
@@ -254,6 +297,24 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
   items.unshift(feedItem);
   await writeFeed(env, code, deduplicate(items).slice(0, MAX_ITEMS));
 
+  if (isValidFacebookUrl(platformUrl) && platformUrl.includes('/reel/')) {
+    const suggestions = generateSuggestions(platformUrl);
+    if (suggestions.length > 0) {
+      const existing = await readSuggestions(env, code);
+      const newItems: FeedItem[] = suggestions.map((sUrl) => ({
+        id: generateId(sUrl),
+        title: 'Suggested Reel',
+        source: 'Facebook',
+        sourceUrl: sUrl,
+        videoUrl: sUrl,
+        thumbnailUrl: '',
+        duration: 0,
+      }));
+      const merged = deduplicate([...newItems, ...existing]).slice(0, MAX_SUGGESTIONS);
+      await writeSuggestions(env, code, merged);
+    }
+  }
+
   return json({ ok: true, item: feedItem });
 }
 
@@ -397,6 +458,22 @@ async function handleStream(request: Request): Promise<Response> {
   }
 }
 
+async function handleSuggestions(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  if (!isValidCode(code)) return json({ error: 'Missing or invalid code' }, 400);
+  const items = await readSuggestions(env, code);
+  return json({ items });
+}
+
+async function handleDeleteSuggestions(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const code = url.searchParams.get('code');
+  if (!isValidCode(code)) return json({ error: 'Missing or invalid code' }, 400);
+  await env.FEED_ITEMS.delete(suggestKey(code));
+  return json({ ok: true });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
@@ -408,6 +485,8 @@ export default {
       if (request.method === 'POST' && url.pathname === '/submit') return handleSubmit(request, env);
       if (request.method === 'GET' && url.pathname === '/feed') return handleFeed(request, env);
       if (request.method === 'DELETE' && url.pathname === '/feed') return handleDeleteFeed(request, env);
+      if (request.method === 'GET' && url.pathname === '/suggestions') return handleSuggestions(request, env);
+      if (request.method === 'DELETE' && url.pathname === '/suggestions') return handleDeleteSuggestions(request, env);
       if (request.method === 'GET' && url.pathname === '/resolve') return handleResolve(request, env);
       if (request.method === 'GET' && url.pathname === '/resolve-debug') return handleResolveDebug(request);
       if (request.method === 'GET' && url.pathname === '/proxy') return handleProxy(request);

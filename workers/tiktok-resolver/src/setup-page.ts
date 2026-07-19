@@ -32,6 +32,10 @@ export function renderSetupPage(code: string, workerUrl: string): string {
     .badge{display:inline-block;background:#222;padding:2px 10px;border-radius:6px;font-size:12px;margin-right:6px}
     .badge-facebook{color:#1877f2}
     .badge-direct{color:#8a8a8a}
+    .badge-suggest{color:#4caf50}
+    #suggestions{margin-top:14px}
+    #suggestions .sg-item{padding:4px 0;border-bottom:1px solid #1a1a1a;font-size:13px;color:#8a8a8a}
+    #suggestions .sg-item a{color:#4caf50;text-decoration:none}
     hr{border:0;border-top:1px solid #222;margin:18px 0}
     #list .item{padding:4px 0;border-bottom:1px solid #1a1a1a}
     #list .idx{color:#555}
@@ -63,6 +67,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
 
     <hr>
     <button id="clearBtn" style="background:#c62828;border-color:#c62828;color:#fff">Clear Feed</button>
+    <div id="suggestions"></div>
     <div style="margin-top:16px">
       <label style="color:#a7a7a7;font-size:14px;margin-bottom:8px;display:block">Current feed:</label>
       <div id="list" style="font-size:14px;color:#ccc;line-height:1.8"></div>
@@ -97,6 +102,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       setMsg('Sending Facebook Reel...');
       send({ code: deviceCode, url: url }).then(function (data) {
         setMsg(data.ok ? 'Sent! Video added to TV.' : 'Failed: ' + (data.error || 'unknown'), !!data.ok);
+        if (data.ok) { loadList(); loadSuggestions(); }
       });
     });
 
@@ -146,7 +152,25 @@ export function renderSetupPage(code: string, workerUrl: string): string {
           if (!el.innerHTML) el.innerHTML = '<em>Feed is empty.</em>';
         });
     }
+
+    function loadSuggestions() {
+      fetch(baseUrl + '/suggestions?code=' + deviceCode)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var el = document.getElementById('suggestions');
+          if (!data.items || !data.items.length) {
+            el.innerHTML = '';
+            return;
+          }
+          el.innerHTML = '<hr><label style="color:#4caf50;font-size:14px;margin-bottom:8px;display:block"><span class="badge badge-suggest">' + data.items.length + ' suggestions</span></label>' +
+            data.items.map(function (it, i) {
+              return '<div class="sg-item">' + (i + 1) + '. <a href="' + it.sourceUrl + '" target="_blank">' + (it.title || it.sourceUrl.slice(0, 60)) + '</a></div>';
+            }).join('');
+        });
+    }
+
     loadList();
+    loadSuggestions();
   </script>
 </body>
 </html>`;

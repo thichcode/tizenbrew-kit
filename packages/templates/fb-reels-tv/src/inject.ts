@@ -3,11 +3,14 @@
   var FALLBACK_RESOLVER_URL = 'http://84.8.220.24:8000';
   var FALLBACK_API_KEY = '299145bbcefca5e3dd0f193dc6d187b0';
   var POLL_INTERVAL = 5000;
+  var SUGGEST_POLL_INTERVAL = 10000;
   var items = [];
+  var suggestions = [];
   var selectedIndex = 0;
   var isPlayerOpen = false;
   var loadTimeout = null;
   var pollTimer = null;
+  var suggestPollTimer = null;
   var lastSeenTopItemId = '';
   var hasLoadedInitialFeed = false;
   var playRequestId = 0;
@@ -240,6 +243,89 @@
     selectedIndex = 0;
     setTimeout(focusSelected, 60);
     if (!isPlayerOpen) resolveTitlesInBackground();
+  }
+
+  function fetchSuggestions() {
+    fetch(WORKER_URL + '/suggestions?code=' + deviceCode())
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.items && data.items.length) {
+          suggestions = data.items.filter(function (it) {
+            return it && typeof it.sourceUrl === 'string' && /^https?:\/\//.test(it.sourceUrl);
+          });
+        } else {
+          suggestions = [];
+        }
+        renderSuggestions();
+      })
+      .catch(function () {});
+  }
+
+  function renderSuggestions() {
+    var el = document.getElementById('suggestions');
+    if (!el) return;
+    if (!suggestions.length) {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = '<div class="suggest-title">Suggestions (' + suggestions.length + ')</div>';
+    suggestions.forEach(function (item, index) {
+      var node = document.createElement('div');
+      node.className = 'suggest-item';
+      node.tabIndex = 0;
+
+      var title = document.createElement('span');
+      title.className = 'suggest-item-title';
+      title.textContent = item.title || item.sourceUrl.slice(0, 50);
+
+      var addBtn = document.createElement('button');
+      addBtn.className = 'suggest-add-btn';
+      addBtn.textContent = 'Add';
+      addBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        addToFeed(item);
+      });
+
+      node.appendChild(title);
+      node.appendChild(addBtn);
+      node.addEventListener('click', function () {
+        playSuggestion(item);
+      });
+      el.appendChild(node);
+    });
+  }
+
+  function addToFeed(suggestItem) {
+    fetch(WORKER_URL + '/submit', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        code: deviceCode(),
+        url: suggestItem.sourceUrl,
+      }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.ok) {
+          suggestions = suggestions.filter(function (s) { return s.sourceUrl !== suggestItem.sourceUrl; });
+          renderSuggestions();
+          fetchFeed();
+        }
+      })
+      .catch(function () {});
+  }
+
+  function playSuggestion(item) {
+    var sItem = {
+      id: 'suggest_' + Date.now(),
+      title: item.title || 'Suggested Reel',
+      source: 'Facebook',
+      sourceUrl: item.sourceUrl,
+      videoUrl: item.sourceUrl,
+      thumbnailUrl: '',
+      duration: 0,
+    };
+    playItem(sItem);
   }
 
   function resolveTitlesInBackground() {
@@ -611,7 +697,9 @@
 
   function startPolling() {
     fetchFeed();
+    fetchSuggestions();
     pollTimer = setInterval(fetchFeed, POLL_INTERVAL);
+    suggestPollTimer = setInterval(fetchSuggestions, SUGGEST_POLL_INTERVAL);
   }
 
   function registerRemoteKeys() {
