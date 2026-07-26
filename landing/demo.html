@@ -41,6 +41,9 @@
   .connect-card button:disabled { background: #333; cursor: not-allowed; }
   .connect-card .error { color: #e94560; font-size: 13px; margin-top: 8px; min-height: 20px; }
   .connect-card .connected { color: #4caf50; font-size: 13px; margin-top: 8px; }
+  .qr-section { margin-top: 16px; }
+  .qr-section img { width: 140px; height: 140px; border-radius: 8px; border: 1px solid #333; background: #fff; padding: 6px; }
+  .qr-label { font-size: 11px; color: #666; margin-top: 6px; }
 
   .feed-list { display: none; flex-direction: column; gap: 8px; }
   .feed-item {
@@ -109,6 +112,10 @@
     <div><button id="connectBtn" onclick="connect()">Connect</button></div>
     <div class="error" id="connectError"></div>
     <div class="connected" id="connectSuccess"></div>
+    <div class="qr-section" id="qrSection" style="display:none">
+      <img id="qrImg" alt="QR Code" />
+      <div class="qr-label">Scan with phone to open setup page</div>
+    </div>
   </div>
 
   <div class="feed-list" id="feedList"></div>
@@ -138,6 +145,7 @@
 
 <script>
   var WORKER_URL = 'https://shortvideo-feed.dvt-kisu.workers.dev';
+  var RESOLVE_URL = '/api/resolve';
   var deviceCode = '';
   var feedItems = [];
   var pollTimer = null;
@@ -177,6 +185,9 @@
       connectBtn.textContent = 'Reconnect';
       dpadHelp.style.display = 'block';
       pollTimer = setInterval(fetchFeed, 8000);
+      var setupUrl = 'https://shortvideo-feed.dvt-kisu.workers.dev/setup?code=' + encodeURIComponent(code);
+      document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(setupUrl);
+      document.getElementById('qrSection').style.display = 'block';
     }).catch(function(err) {
       connectError.textContent = 'Cannot connect: ' + err.message;
       connectBtn.disabled = false;
@@ -271,9 +282,24 @@
     playerOverlay.classList.add('active');
     isPlayerOpen = true;
 
-    var proxyUrl = WORKER_URL + '/proxy?url=' + encodeURIComponent(item.sourceUrl);
-    playerVideo.src = proxyUrl;
-    playerVideo.play().catch(function() {});
+    var src = item.sourceUrl || '';
+    var isFb = /facebook\.com|fb\.watch/.test(src);
+    if (isFb) {
+      fetch(RESOLVE_URL + '?url=' + encodeURIComponent(src))
+        .then(function(r) { return r.json(); }).then(function(data) {
+        var url = (data.ok && data.resolved && data.resolved.videoUrl)
+          ? data.resolved.videoUrl
+          : WORKER_URL + '/proxy?url=' + encodeURIComponent(src);
+        playerVideo.src = url;
+        playerVideo.play().catch(function() {});
+      }).catch(function() {
+        playerVideo.src = WORKER_URL + '/proxy?url=' + encodeURIComponent(src);
+        playerVideo.play().catch(function() {});
+      });
+    } else {
+      playerVideo.src = WORKER_URL + '/proxy?url=' + encodeURIComponent(src);
+      playerVideo.play().catch(function() {});
+    }
   }
 
   function closePlayer() {

@@ -374,11 +374,16 @@ async function handleProxy(request: Request, env: Env): Promise<Response> {
     return json({ error: 'Missing or invalid ?url parameter' }, 400);
   }
 
-  let resolvedUrl = targetUrl;
   if (isValidFacebookUrl(targetUrl)) {
     const resolved = await callFallbackResolver(env, targetUrl);
     if (resolved && resolved.videoUrl && isValidUrl(resolved.videoUrl)) {
-      resolvedUrl = resolved.videoUrl;
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': resolved.videoUrl,
+          'access-control-allow-origin': '*',
+        },
+      });
     }
   }
 
@@ -389,12 +394,13 @@ async function handleProxy(request: Request, env: Env): Promise<Response> {
       'Accept-Language': 'en-US,en;q=0.9',
     };
 
-    if (/facebook\.com|fbcdn\.net/.test(resolvedUrl)) {
+    if (/facebook\.com|fbcdn\.net/.test(targetUrl)) {
       headers['Referer'] = 'https://www.facebook.com/';
+      headers['Origin'] = 'https://www.facebook.com';
     }
 
     let cookies = '';
-    if (/tiktok\.com/.test(resolvedUrl)) {
+    if (/tiktok\.com/.test(targetUrl)) {
       headers['Referer'] = 'https://www.tiktok.com/';
       headers['Origin'] = 'https://www.tiktok.com';
       try {
@@ -408,7 +414,7 @@ async function handleProxy(request: Request, env: Env): Promise<Response> {
 
     if (cookies) headers['Cookie'] = cookies;
 
-    const res = await fetch(resolvedUrl, { headers });
+    const res = await fetch(targetUrl, { headers });
     if (!res.ok) return json({ error: 'Proxy fetch failed', status: res.status }, 502);
 
     const proxyHeaders = new Headers(res.headers);

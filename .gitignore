@@ -86,3 +86,6 @@ temp/
 .tizen/
 *.wgt
 *.tpk
+
+.vercel
+.env*
