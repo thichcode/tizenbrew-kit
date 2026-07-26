@@ -31,6 +31,10 @@
   var setupCodeEl = document.getElementById('setup-code');
   var setupQrEl = document.getElementById('setup-qr');
   var setupUrlEl = document.getElementById('setup-url');
+  var feedConnectEl = document.getElementById('feed-connect');
+  var feedConnectCodeEl = document.getElementById('feed-connect-code');
+  var feedConnectQrEl = document.getElementById('feed-connect-qr');
+  var feedConnectUrlEl = document.getElementById('feed-connect-url');
   var appEl = document.getElementById('app');
 
   function deviceCode() {
@@ -200,6 +204,14 @@
     if (feedEl) feedEl.style.display = 'flex';
     feedEl.style.flexDirection = 'column';
     if (helpEl) helpEl.style.display = 'block';
+
+    if (feedConnectEl) {
+      var code = deviceCode();
+      if (feedConnectCodeEl) feedConnectCodeEl.textContent = code;
+      if (feedConnectQrEl) feedConnectQrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(WORKER_URL + '/setup?code=' + code);
+      if (feedConnectUrlEl) feedConnectUrlEl.textContent = WORKER_URL + '/setup?code=' + code;
+      feedConnectEl.style.display = 'block';
+    }
 
     items.forEach(function (item, index) {
       var node = document.createElement('div');
@@ -373,6 +385,7 @@
     if (setupQrEl) setupQrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(WORKER_URL + '/setup?code=' + code);
     if (setupEl) setupEl.style.display = 'block';
     if (feedEl) feedEl.style.display = 'none';
+    if (feedConnectEl) feedConnectEl.style.display = 'none';
     if (helpEl) helpEl.style.display = 'none';
   }
 
