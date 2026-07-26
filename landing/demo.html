@@ -138,8 +138,6 @@
 
 <script>
   var WORKER_URL = 'https://shortvideo-feed.dvt-kisu.workers.dev';
-  var BACKEND_URL = 'http://84.8.220.24:8000';
-  var BACKEND_API_KEY = '299145bbcefca5e3dd0f193dc6d187b0';
   var deviceCode = '';
   var feedItems = [];
   var pollTimer = null;
@@ -273,14 +271,9 @@
     playerOverlay.classList.add('active');
     isPlayerOpen = true;
 
-    if (item.videoUrl && item.videoUrl !== item.sourceUrl && /^https?:\/\/.*\.fbcdn\.net/.test(item.videoUrl)) {
-      playerVideo.src = item.videoUrl;
-      playerVideo.play().catch(function() {});
-    } else {
-      var playUrl = BACKEND_URL + '/play?mode=redirect&url=' + encodeURIComponent(item.sourceUrl) + '&api_key=' + BACKEND_API_KEY;
-      playerVideo.src = playUrl;
-      playerVideo.play().catch(function() {});
-    }
+    var proxyUrl = WORKER_URL + '/proxy?url=' + encodeURIComponent(item.sourceUrl);
+    playerVideo.src = proxyUrl;
+    playerVideo.play().catch(function() {});
   }
 
   function closePlayer() {

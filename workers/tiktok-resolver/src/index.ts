@@ -367,11 +367,19 @@ async function handleResolveDebug(request: Request): Promise<Response> {
   return json({ ok: true, debug: result });
 }
 
-async function handleProxy(request: Request): Promise<Response> {
+async function handleProxy(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const targetUrl = url.searchParams.get('url');
   if (!targetUrl || !isValidUrl(targetUrl)) {
     return json({ error: 'Missing or invalid ?url parameter' }, 400);
+  }
+
+  let resolvedUrl = targetUrl;
+  if (isValidFacebookUrl(targetUrl)) {
+    const resolved = await callFallbackResolver(env, targetUrl);
+    if (resolved && resolved.videoUrl && isValidUrl(resolved.videoUrl)) {
+      resolvedUrl = resolved.videoUrl;
+    }
   }
 
   try {
@@ -381,11 +389,14 @@ async function handleProxy(request: Request): Promise<Response> {
       'Accept-Language': 'en-US,en;q=0.9',
     };
 
+    if (/facebook\.com|fbcdn\.net/.test(resolvedUrl)) {
+      headers['Referer'] = 'https://www.facebook.com/';
+    }
+
     let cookies = '';
-    if (/tiktok\.com/.test(targetUrl)) {
+    if (/tiktok\.com/.test(resolvedUrl)) {
       headers['Referer'] = 'https://www.tiktok.com/';
       headers['Origin'] = 'https://www.tiktok.com';
-      // Get cookies from TikTok main page first
       try {
         const pageRes = await fetch('https://www.tiktok.com/', {
           headers: { 'User-Agent': headers['User-Agent'] },
@@ -397,7 +408,7 @@ async function handleProxy(request: Request): Promise<Response> {
 
     if (cookies) headers['Cookie'] = cookies;
 
-    const res = await fetch(targetUrl, { headers });
+    const res = await fetch(resolvedUrl, { headers });
     if (!res.ok) return json({ error: 'Proxy fetch failed', status: res.status }, 502);
 
     const proxyHeaders = new Headers(res.headers);
@@ -489,7 +500,7 @@ export default {
       if (request.method === 'DELETE' && url.pathname === '/suggestions') return handleDeleteSuggestions(request, env);
       if (request.method === 'GET' && url.pathname === '/resolve') return handleResolve(request, env);
       if (request.method === 'GET' && url.pathname === '/resolve-debug') return handleResolveDebug(request);
-      if (request.method === 'GET' && url.pathname === '/proxy') return handleProxy(request);
+      if (request.method === 'GET' && url.pathname === '/proxy') return handleProxy(request, env);
       if (request.method === 'GET' && url.pathname === '/stream') return handleStream(request);
 
       return json({ error: 'Not found' }, 404);
