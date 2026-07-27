@@ -8,24 +8,79 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0d0d0d; color: #e8e8e8;
+    background: #070707; color: #e8e8e8;
     min-height: 100vh; display: flex; flex-direction: column; align-items: center;
   }
-  .container { max-width: 760px; width: 100%; padding: 32px 20px; }
+  .container { max-width: 760px; width: 100%; padding: 24px 16px; }
 
-  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-  .sub { color: #888; font-size: 13px; margin-bottom: 24px; }
-  .sub code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #e94560; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .sub { color: #888; font-size: 12px; margin-bottom: 20px; }
+  .sub code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 11px; color: #e94560; }
 
-  .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .connect-card {
+    background: #121212; border: 1px solid #222; border-radius: 12px;
+    padding: 20px; text-align: center; margin-bottom: 20px;
+  }
+  .connect-card h2 { font-size: 15px; margin-bottom: 12px; }
+  .connect-card input {
+    width: 100%; max-width: 220px; padding: 12px 16px; border-radius: 8px;
+    border: 1px solid #333; background: #0a0a0a; color: #fff;
+    font-size: 18px; text-align: center; letter-spacing: 4px;
+    text-transform: uppercase; outline: none;
+  }
+  .connect-card input:focus { border-color: #e94560; }
+  .connect-card button {
+    margin-top: 10px; padding: 10px 28px; border-radius: 8px;
+    border: none; background: #e94560; color: #fff; font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: background .2s;
+  }
+  .connect-card button:hover { background: #d63c55; }
+  .connect-card button:disabled { background: #333; cursor: not-allowed; }
+  .connect-card .err { color: #e94560; font-size: 12px; margin-top: 6px; min-height: 18px; }
+  .connect-card .ok { color: #4caf50; font-size: 12px; margin-top: 6px; }
+  .connect-card .hint { color: #555; font-size: 11px; margin-top: 8px; }
+  .qr-section { margin-top: 12px; }
+  .qr-section img { width: 120px; height: 120px; border-radius: 8px; border: 1px solid #333; background: #fff; padding: 5px; }
+  .qr-label { font-size: 10px; color: #666; margin-top: 4px; }
+
+  .section-title { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .section-title .bar { flex: 1; height: 1px; background: #222; }
+
+  .feed-list { display: none; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .feed-item {
+    background: #141414; border: 1px solid #1a1a1a; border-radius: 10px;
+    padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+    cursor: pointer; transition: background .15s;
+  }
+  .feed-item:hover { background: #1c1c1c; border-color: #333; }
+  .feed-item:active { background: #222; }
+  .feed-item-idx { color: #555; font-size: 12px; min-width: 20px; text-align: right; }
+  .feed-item-info { flex: 1; min-width: 0; }
+  .feed-item-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .feed-item-url { color: #555; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  .feed-item-badge {
+    font-size: 9px; padding: 2px 7px; border-radius: 4px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    background: #0d1a3a; color: #1877f2;
+  }
+  .feed-item-play {
+    width: 30px; height: 30px; border-radius: 50%; border: none;
+    background: #e94560; color: #fff; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; flex-shrink: 0;
+  }
+  .feed-item-play svg { width: 13px; height: 13px; fill: currentColor; }
+
+  .empty-msg { text-align: center; color: #555; font-size: 13px; padding: 30px 0; }
+
+  .input-row { display: flex; gap: 6px; }
   .input-row input {
-    flex: 1; padding: 12px 14px; font-size: 14px;
+    flex: 1; padding: 10px 12px; font-size: 13px;
     background: #1a1a1a; color: #eee; border: 1px solid #333; border-radius: 8px;
     outline: none; transition: border .2s;
   }
   .input-row input:focus { border-color: #e94560; }
   .input-row button {
-    padding: 12px 24px; font-size: 14px; font-weight: 600;
+    padding: 10px 18px; font-size: 13px; font-weight: 600;
     border: none; border-radius: 8px; cursor: pointer;
     background: #e94560; color: #fff; white-space: nowrap;
     transition: background .2s, opacity .2s;
@@ -33,34 +88,24 @@
   .input-row button:hover { background: #d63850; }
   .input-row button:disabled { opacity: .5; cursor: not-allowed; }
 
-  .presets { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
-  .presets button {
-    font-size: 12px; padding: 5px 12px; border-radius: 6px;
-    background: #222; color: #999; border: 1px solid #333; cursor: pointer;
-    transition: background .2s, color .2s;
-  }
-  .presets button:hover { background: #333; color: #eee; }
-
   .player-wrap {
     position: relative; width: 100%; background: #000; border-radius: 10px; overflow: hidden;
-    margin: 16px 0; aspect-ratio: 16 / 9;
+    margin: 12px 0; aspect-ratio: 16 / 9;
     display: flex; align-items: center; justify-content: center;
   }
-  .player-wrap video {
-    width: 100%; height: 100%; display: block; outline: none;
-  }
+  .player-wrap video { width: 100%; height: 100%; display: block; outline: none; }
   .player-wrap .placeholder {
-    color: #555; font-size: 14px; text-align: center; line-height: 1.6;
+    color: #555; font-size: 13px; text-align: center; line-height: 1.6;
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
   }
-  .player-wrap .placeholder svg { width: 48px; height: 48px; fill: #444; margin-bottom: 8px; }
+  .player-wrap .placeholder svg { width: 44px; height: 44px; fill: #444; margin-bottom: 6px; }
 
   .status-bar {
-    display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: #888; margin-bottom: 12px;
-    min-height: 20px;
+    display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #888; margin-bottom: 10px;
+    min-height: 18px;
   }
-  .status-bar .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .status-bar .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
   .dot.idle { background: #555; }
   .dot.loading { background: #f0ad4e; animation: pulse .8s infinite; }
   .dot.playing { background: #4caf50; }
@@ -70,23 +115,26 @@
 
   .log-box {
     background: #111; border: 1px solid #222; border-radius: 8px;
-    padding: 12px 14px; font-size: 12px; font-family: 'Courier New', monospace;
-    max-height: 180px; overflow-y: auto; line-height: 1.7; color: #999;
+    padding: 10px 12px; font-size: 11px; font-family: 'Courier New', monospace;
+    max-height: 120px; overflow-y: auto; line-height: 1.6; color: #888;
   }
-  .log-box .t { color: #555; }
+  .log-box .t { color: #444; }
   .log-box .ok { color: #4caf50; }
   .log-box .err { color: #e94560; }
   .log-box .info { color: #5dade2; }
   .log-box .warn { color: #f0ad4e; }
 
-  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #222; color: #aaa; margin-left: 6px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; background: #222; color: #aaa; margin-left: 6px; vertical-align: middle; }
 
-  hr { border: none; border-top: 1px solid #222; margin: 20px 0; }
+  hr { border: none; border-top: 1px solid #1a1a1a; margin: 16px 0; }
+
+  .footer { text-align: center; padding: 20px 0 32px; font-size: 11px; color: #444; }
+  .footer a { color: #555; text-decoration: none; }
+  .footer a:hover { color: #777; }
 
   @media (max-width: 500px) {
-    .input-row { flex-direction: column; }
-    .container { padding: 20px 12px; }
-    h1 { font-size: 18px; }
+    .container { padding: 16px 12px; }
+    h1 { font-size: 17px; }
   }
 </style>
 </head>
@@ -95,50 +143,74 @@
 
   <h1>Stream Reels <span class="badge">Cách B</span></h1>
   <div class="sub">
-    <code>yt-dlp -g</code> → proxy stream → HTML5 player &nbsp;·&nbsp;
-    <code id="serverLabel">…</code>
+    <code>yt-dlp -g</code> → proxy stream → HTML5 &nbsp;·&nbsp;
+    <code>/api/play</code>
   </div>
 
-  <div class="presets">
-    <button onclick="setUrl('https://www.facebook.com/reel/1658929128587262')">FB Reel #1</button>
-    <button onclick="setUrl('https://www.facebook.com/reel/1090214202289169')">FB Reel #2</button>
-    <button onclick="setUrl('https://www.facebook.com/reel/982172340489490')">FB Reel #3</button>
-    <button onclick="setUrl('https://www.tiktok.com/@tiktok/video/7554941202322533671')">TikTok</button>
+  <!-- Connect card -->
+  <div class="connect-card" id="connectCard">
+    <h2>Kết nối TV với điện thoại</h2>
+    <input id="codeInput" type="text" placeholder="Nhập mã" maxlength="12" autofocus />
+    <div><button id="connectBtn" onclick="doConnect()">Kết nối</button></div>
+    <div class="err" id="connectErr"></div>
+    <div class="ok" id="connectOk"></div>
+    <div class="qr-section" id="qrSection" style="display:none">
+      <img id="qrImg" alt="QR Code" />
+      <div class="qr-label">Quét QR bằng điện thoại để gửi Reels</div>
+    </div>
+    <div class="hint">Nhập mã bất kỳ (VD: <b style="color:#888">DEMO</b>) để dùng thử</div>
   </div>
 
-  <div class="input-row">
-    <input id="urlInput" type="url" placeholder="https://www.facebook.com/reel/..." autofocus spellcheck="false">
+  <!-- Feed -->
+  <div class="section-title"><span>Reels từ điện thoại</span><span class="bar"></span></div>
+  <div class="feed-list" id="feedList"></div>
+  <div class="empty-msg" id="emptyMsg" style="display:none">Chưa có Reel nào. Gửi từ điện thoại qua mã kết nối!</div>
+
+  <!-- Manual URL -->
+  <hr>
+  <div class="section-title"><span>Nhập URL thủ công</span><span class="bar"></span></div>
+  <div class="input-row" style="margin-bottom:8px">
+    <input id="urlInput" type="url" placeholder="https://www.facebook.com/reel/..." spellcheck="false">
     <button id="playBtn" onclick="doPlay()">▶ Play</button>
   </div>
 
+  <!-- Player -->
   <div class="player-wrap">
     <video id="videoPlayer" controls playsinline preload="auto"></video>
     <div class="placeholder" id="placeholder">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <div>Enter a Reel URL and press <strong>Play</strong></div>
-      <div style="font-size:12px;color:#444;margin-top:4px">Streaming trực tiếp qua proxy</div>
+      <div>Chọn Reel từ danh sách hoặc nhập URL</div>
+      <div style="font-size:11px;color:#444;margin-top:4px">Streaming trực tiếp qua proxy /api/play</div>
     </div>
   </div>
 
-  <div class="status-bar" id="statusBar">
+  <div class="status-bar">
     <span id="statusDot"><span class="dot idle"></span> Idle</span>
     <span class="meta" id="metaInfo"></span>
   </div>
 
   <div class="log-box" id="logBox"></div>
 
-  <hr>
-
-  <div style="font-size:12px;color:#555;line-height:1.8">
-    <strong>Cách B — Streaming trực tiếp:</strong><br>
-    <code style="background:#1a1a1a;padding:2px 6px;border-radius:3px">yt-dlp -g "URL"</code> → lấy stream URL thật → proxy CDN → HTML5 video<br>
-    Không tải file, phát gần như ngay lập tức.
+  <div class="footer">
+    <a href="./">Home</a> &nbsp;·&nbsp;
+    <a href="https://github.com/thichcode/tizenbrew-kit" target="_blank">GitHub</a>
   </div>
 
 </div>
 
 <script>
 (function () {
+  var WORKER_URL = 'https://shortvideo-feed.dvt-kisu.workers.dev';
+  var RESOLVE_URL = '/api/resolve';
+
+  var codeInput = document.getElementById('codeInput');
+  var connectBtn = document.getElementById('connectBtn');
+  var connectErr = document.getElementById('connectErr');
+  var connectOk = document.getElementById('connectOk');
+  var qrSection = document.getElementById('qrSection');
+  var qrImg = document.getElementById('qrImg');
+  var feedList = document.getElementById('feedList');
+  var emptyMsg = document.getElementById('emptyMsg');
   var urlInput = document.getElementById('urlInput');
   var playBtn  = document.getElementById('playBtn');
   var video    = document.getElementById('videoPlayer');
@@ -146,11 +218,12 @@
   var statusDot   = document.getElementById('statusDot');
   var metaInfo    = document.getElementById('metaInfo');
   var logBox      = document.getElementById('logBox');
-  var serverLabel = document.getElementById('serverLabel');
 
-  serverLabel.textContent = '/api/play (server-side proxy)';
+  var deviceCode = '';
+  var feedItems = [];
+  var pollTimer = null;
 
-  function setUrl(u) { urlInput.value = u; }
+  // ─── helpers ──────────────────────────────────────────
 
   function setStatus(state, msg) {
     var cls = state;
@@ -170,31 +243,155 @@
     logBox.scrollTop = logBox.scrollHeight;
   }
 
-  function escHtml(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+  function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // ─── connect ──────────────────────────────────────────
+
+  function doConnect() {
+    var code = codeInput.value.trim().toUpperCase();
+    if (!code || !/^[A-Z0-9]{4,12}$/.test(code)) {
+      connectErr.textContent = 'Mã không hợp lệ (4-12 ký tự, chữ/số)';
+      return;
+    }
+    connectErr.textContent = '';
+    connectBtn.disabled = true;
+    connectBtn.textContent = 'Đang kết nối…';
+
+    deviceCode = code;
+    fetchFeed().then(function () {
+      connectOk.textContent = 'Đã kết nối — Mã: ' + code;
+      connectBtn.disabled = false;
+      connectBtn.textContent = 'Đổi mã';
+      log('Connected with code: ' + code, 'ok');
+
+      var setupUrl = WORKER_URL + '/setup?code=' + encodeURIComponent(code);
+      qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(setupUrl);
+      qrSection.style.display = 'block';
+
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(fetchFeed, 8000);
+    }).catch(function (err) {
+      connectErr.textContent = 'Lỗi kết nối: ' + err.message;
+      connectBtn.disabled = false;
+      connectBtn.textContent = 'Kết nối';
+    });
   }
 
-  function doPlay() {
-    var rawUrl = urlInput.value.trim();
-    if (!rawUrl) { log('Enter a URL first', 'err'); return; }
+  // ─── feed ─────────────────────────────────────────────
 
-    var startTs = Date.now();
+  function fetchFeed() {
+    return fetch(WORKER_URL + '/feed?code=' + encodeURIComponent(deviceCode))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        feedItems = (data.items || []).filter(function (it) {
+          return it && it.id && it.title && it.source !== 'TikTok' &&
+            /^https?:\/\//.test(it.videoUrl || '');
+        }).map(function (it) {
+          return {
+            id: it.id, title: it.title, source: it.source,
+            sourceUrl: it.sourceUrl || '', videoUrl: it.videoUrl || '',
+            thumbnailUrl: it.thumbnailUrl || ''
+          };
+        });
+        renderFeed();
+      }).catch(function (err) {
+        log('Feed poll error: ' + err.message, 'err');
+      });
+  }
 
+  function renderFeed() {
+    feedList.innerHTML = '';
+    if (!feedItems.length) {
+      feedList.style.display = 'none';
+      emptyMsg.style.display = 'block';
+      return;
+    }
+    emptyMsg.style.display = 'none';
+    feedList.style.display = 'flex';
+
+    feedItems.forEach(function (item, i) {
+      var el = document.createElement('div');
+      el.className = 'feed-item';
+
+      var idx = document.createElement('span');
+      idx.className = 'feed-item-idx';
+      idx.textContent = (i + 1);
+
+      var info = document.createElement('div');
+      info.className = 'feed-item-info';
+      var title = document.createElement('div');
+      title.className = 'feed-item-title';
+      title.textContent = item.title || '(untitled)';
+      var url = document.createElement('div');
+      url.className = 'feed-item-url';
+      url.textContent = item.sourceUrl || item.videoUrl;
+      info.appendChild(title);
+      info.appendChild(url);
+
+      var badge = document.createElement('span');
+      badge.className = 'feed-item-badge';
+      badge.textContent = item.source;
+
+      var playBtn = document.createElement('button');
+      playBtn.className = 'feed-item-play';
+      playBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+      playBtn.onclick = function (e) { e.stopPropagation(); playItem(item); };
+
+      el.appendChild(idx);
+      el.appendChild(info);
+      el.appendChild(badge);
+      el.appendChild(playBtn);
+      el.onclick = function () { playItem(item); };
+      feedList.appendChild(el);
+    });
+  }
+
+  // ─── play ─────────────────────────────────────────────
+
+  function playUrl(rawUrl, title) {
+    urlInput.value = rawUrl;
+    doPlay(title);
+  }
+
+  function playItem(item) {
     placeholder.style.display = 'none';
     video.src = '';
     video.load();
     setStatus('loading', 'Resolving & streaming…');
-    log('Resolving: ' + rawUrl.substring(0, 80), 'info');
+    log('Feed play: ' + (item.title || '').substring(0, 60), 'info');
+
+    var src = item.sourceUrl || '';
+    var isFb = /facebook\.com|fb\.watch/.test(src);
+
+    if (isFb) {
+      var playUrl = '/api/play?url=' + encodeURIComponent(src);
+      video.src = playUrl;
+      video.load();
+      video.play().catch(function () {});
+    } else {
+      video.src = WORKER_URL + '/proxy?url=' + encodeURIComponent(src);
+      video.load();
+      video.play().catch(function () {});
+    }
+  }
+
+  function doPlay(title) {
+    title = title || '';
+    var rawUrl = urlInput.value.trim();
+    if (!rawUrl) { log('Enter a URL first', 'err'); return; }
+
+    var startTs = Date.now();
+    placeholder.style.display = 'none';
+    video.src = '';
+    video.load();
+    setStatus('loading', 'Resolving & streaming…');
+    log('Manual play: ' + rawUrl.substring(0, 80), 'info');
     playBtn.disabled = true;
     playBtn.textContent = '…';
 
-    var playUrl = '/api/play?url=' + encodeURIComponent(rawUrl);
-
-    log('GET /api/play (server-side proxy, API key hidden)', 'info');
-
-    video.src = playUrl;
+    video.src = '/api/play?url=' + encodeURIComponent(rawUrl);
     video.load();
 
     video.play().then(function () {
@@ -207,69 +404,57 @@
     });
   }
 
+  // ─── video events ─────────────────────────────────────
+
   video.addEventListener('playing', function () {
     setStatus('playing', 'Playing');
-    var elapsed = video.duration ? video.duration.toFixed(1) + 's' : '?';
-    metaInfo.textContent = video.videoWidth + 'x' + video.videoHeight + ' · ' + elapsed;
-    log('Video playing – ' + video.videoWidth + 'x' + video.videoHeight, 'ok');
+    var d = video.duration ? video.duration.toFixed(1) + 's' : '?';
+    metaInfo.textContent = video.videoWidth + 'x' + video.videoHeight + ' · ' + d;
+    log('Video: ' + video.videoWidth + 'x' + video.videoHeight, 'ok');
   });
 
   video.addEventListener('loadedmetadata', function () {
-    log('Metadata: ' + video.videoWidth + 'x' + video.videoHeight + ', ' + (video.duration || '?').toFixed(1) + 's', 'ok');
     metaInfo.textContent = video.videoWidth + 'x' + video.videoHeight + ' · ' + (video.duration ? video.duration.toFixed(1) + 's' : '');
+    log('Metadata: ' + video.videoWidth + 'x' + video.videoHeight + ', ' + (video.duration || '?').toFixed(1) + 's', 'ok');
   });
 
-  video.addEventListener('waiting', function () {
-    setStatus('loading', 'Buffering…');
-    log('Buffering…', 'warn');
-  });
-
-  video.addEventListener('canplay', function () {
-    setStatus('playing', 'Ready');
-  });
-
+  video.addEventListener('waiting', function () { setStatus('loading', 'Buffering…'); log('Buffering…', 'warn'); });
+  video.addEventListener('canplay', function () { setStatus('playing', 'Ready'); });
   video.addEventListener('error', function () {
     var c = video.error ? video.error.code : 0;
     var msgs = {1:'Aborted',2:'Network error',3:'Decode error',4:'Format not supported'};
     setStatus('error', msgs[c] || 'Error ' + c);
     log('Video error: ' + (msgs[c] || 'code ' + c), 'err');
   });
+  video.addEventListener('ended', function () { setStatus('idle', 'Ended'); log('Playback ended', 'ok'); });
+  video.addEventListener('loadstart', function () { log('Video load started', 'info'); });
+  video.addEventListener('progress', function () { playBtn.disabled = false; playBtn.textContent = '▶ Play'; });
 
-  video.addEventListener('ended', function () {
-    setStatus('idle', 'Ended');
-    log('Playback ended', 'ok');
-  });
+  // ─── input events ─────────────────────────────────────
 
-  video.addEventListener('suspend', function () {
-    log('Video load suspended', 'warn');
-  });
+  codeInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doConnect(); });
+  urlInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') doPlay(); });
 
-  video.addEventListener('loadstart', function () {
-    log('Video load started', 'info');
-  });
-
-  video.addEventListener('progress', function () {
-    playBtn.disabled = false;
-    playBtn.textContent = '▶ Play';
-  });
-
-  urlInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') doPlay();
-  });
-
-  window.setUrl = setUrl;
+  window.setUrl = function (u) { urlInput.value = u; };
   window.doPlay = doPlay;
+  window.doConnect = doConnect;
 
-  log('demo2 ready — Cách B: proxy stream qua /api/play', 'ok');
-  log('API key kept on server — safe from client-side theft', 'ok');
-  setStatus('idle', 'Idle — enter URL and press Play');
+  // ─── init ─────────────────────────────────────────────
+
+  log('demo2 ready — Cách B: proxy stream /api/play', 'ok');
+  setStatus('idle', 'Idle');
 
   var params = new URLSearchParams(window.location.search);
   var autoUrl = params.get('url');
   if (autoUrl && /^https?:\/\//.test(autoUrl)) {
     urlInput.value = autoUrl;
-    log('Auto-load from URL param: ' + autoUrl.substring(0, 80), 'info');
-    setTimeout(doPlay, 300);
+    log('Auto from URL param: ' + autoUrl.substring(0, 80), 'info');
+    setTimeout(function () { doPlay(); }, 300);
+  }
+  var autoCode = params.get('code');
+  if (autoCode && /^[A-Z0-9]{4,12}$/i.test(autoCode)) {
+    codeInput.value = autoCode.toUpperCase();
+    setTimeout(doConnect, 300);
   }
 })();
 </script>
