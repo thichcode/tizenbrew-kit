@@ -149,26 +149,26 @@
 
   <!-- Connect card -->
   <div class="connect-card" id="connectCard">
-    <h2>Kết nối TV với điện thoại</h2>
-    <input id="codeInput" type="text" placeholder="Nhập mã" maxlength="12" autofocus />
-    <div><button id="connectBtn" onclick="doConnect()">Kết nối</button></div>
+    <h2>Pair TV with your phone</h2>
+    <input id="codeInput" type="text" placeholder="Enter code" maxlength="12" autofocus />
+    <div><button id="connectBtn" onclick="doConnect()">Connect</button></div>
     <div class="err" id="connectErr"></div>
     <div class="ok" id="connectOk"></div>
     <div class="qr-section" id="qrSection" style="display:none">
       <img id="qrImg" alt="QR Code" />
-      <div class="qr-label">Quét QR bằng điện thoại để gửi Reels</div>
+      <div class="qr-label">Scan QR with your phone to send Reels</div>
     </div>
-    <div class="hint">Nhập mã bất kỳ (VD: <b style="color:#888">DEMO</b>) để dùng thử</div>
+    <div class="hint">Try any code (e.g. <b style="color:#888">DEMO</b>) to test</div>
   </div>
 
   <!-- Feed -->
-  <div class="section-title"><span>Reels từ điện thoại</span><span class="bar"></span></div>
+  <div class="section-title"><span>Reels from phone</span><span class="bar"></span></div>
   <div class="feed-list" id="feedList"></div>
-  <div class="empty-msg" id="emptyMsg" style="display:none">Chưa có Reel nào. Gửi từ điện thoại qua mã kết nối!</div>
+  <div class="empty-msg" id="emptyMsg" style="display:none">No Reels yet. Send from your phone via the pairing code!</div>
 
   <!-- Manual URL -->
   <hr>
-  <div class="section-title"><span>Nhập URL thủ công</span><span class="bar"></span></div>
+  <div class="section-title"><span>Manual URL</span><span class="bar"></span></div>
   <div class="input-row" style="margin-bottom:8px">
     <input id="urlInput" type="url" placeholder="https://www.facebook.com/reel/..." spellcheck="false">
     <button id="playBtn" onclick="doPlay()">▶ Play</button>
@@ -179,8 +179,8 @@
     <video id="videoPlayer" controls playsinline preload="auto"></video>
     <div class="placeholder" id="placeholder">
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-      <div>Chọn Reel từ danh sách hoặc nhập URL</div>
-      <div style="font-size:11px;color:#444;margin-top:4px">Streaming trực tiếp qua proxy /api/play</div>
+      <div>Pick a Reel from the list or enter a URL</div>
+      <div style="font-size:11px;color:#444;margin-top:4px">Direct streaming via proxy /api/play</div>
     </div>
   </div>
 
@@ -252,18 +252,18 @@
   function doConnect() {
     var code = codeInput.value.trim().toUpperCase();
     if (!code || !/^[A-Z0-9]{4,12}$/.test(code)) {
-      connectErr.textContent = 'Mã không hợp lệ (4-12 ký tự, chữ/số)';
+      connectErr.textContent = 'Invalid code (4-12 letters/numbers)';
       return;
     }
     connectErr.textContent = '';
     connectBtn.disabled = true;
-    connectBtn.textContent = 'Đang kết nối…';
+    connectBtn.textContent = 'Connecting…';
 
     deviceCode = code;
     fetchFeed().then(function () {
-      connectOk.textContent = 'Đã kết nối — Mã: ' + code;
+      connectOk.textContent = 'Connected — Code: ' + code;
       connectBtn.disabled = false;
-      connectBtn.textContent = 'Đổi mã';
+      connectBtn.textContent = 'Change code';
       log('Connected with code: ' + code, 'ok');
 
       var setupUrl = WORKER_URL + '/setup?code=' + encodeURIComponent(code);
@@ -273,7 +273,7 @@
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(fetchFeed, 8000);
     }).catch(function (err) {
-      connectErr.textContent = 'Lỗi kết nối: ' + err.message;
+      connectErr.textContent = 'Connection error: ' + err.message;
       connectBtn.disabled = false;
       connectBtn.textContent = 'Kết nối';
     });
