@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stream Reels – demo2</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d0d0d; color: #e8e8e8;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  }
+  .container { max-width: 760px; width: 100%; padding: 32px 20px; }
+
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .sub { color: #888; font-size: 13px; margin-bottom: 24px; }
+  .sub code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #e94560; }
+
+  .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .input-row input {
+    flex: 1; padding: 12px 14px; font-size: 14px;
+    background: #1a1a1a; color: #eee; border: 1px solid #333; border-radius: 8px;
+    outline: none; transition: border .2s;
+  }
+  .input-row input:focus { border-color: #e94560; }
+  .input-row button {
+    padding: 12px 24px; font-size: 14px; font-weight: 600;
+    border: none; border-radius: 8px; cursor: pointer;
+    background: #e94560; color: #fff; white-space: nowrap;
+    transition: background .2s, opacity .2s;
+  }
+  .input-row button:hover { background: #d63850; }
+  .input-row button:disabled { opacity: .5; cursor: not-allowed; }
+
+  .presets { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+  .presets button {
+    font-size: 12px; padding: 5px 12px; border-radius: 6px;
+    background: #222; color: #999; border: 1px solid #333; cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .presets button:hover { background: #333; color: #eee; }
+
+  .player-wrap {
+    position: relative; width: 100%; background: #000; border-radius: 10px; overflow: hidden;
+    margin: 16px 0; aspect-ratio: 16 / 9;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .player-wrap video {
+    width: 100%; height: 100%; display: block; outline: none;
+  }
+  .player-wrap .placeholder {
+    color: #555; font-size: 14px; text-align: center; line-height: 1.6;
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .player-wrap .placeholder svg { width: 48px; height: 48px; fill: #444; margin-bottom: 8px; }
+
+  .status-bar {
+    display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: #888; margin-bottom: 12px;
+    min-height: 20px;
+  }
+  .status-bar .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.idle { background: #555; }
+  .dot.loading { background: #f0ad4e; animation: pulse .8s infinite; }
+  .dot.playing { background: #4caf50; }
+  .dot.error { background: #e94560; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .status-bar .meta { margin-left: auto; color: #666; }
+
+  .log-box {
+    background: #111; border: 1px solid #222; border-radius: 8px;
+    padding: 12px 14px; font-size: 12px; font-family: 'Courier New', monospace;
+    max-height: 180px; overflow-y: auto; line-height: 1.7; color: #999;
+  }
+  .log-box .t { color: #555; }
+  .log-box .ok { color: #4caf50; }
+  .log-box .err { color: #e94560; }
+  .log-box .info { color: #5dade2; }
+  .log-box .warn { color: #f0ad4e; }
+
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #222; color: #aaa; margin-left: 6px; }
+
+  hr { border: none; border-top: 1px solid #222; margin: 20px 0; }
+
+  @media (max-width: 500px) {
+    .input-row { flex-direction: column; }
+    .container { padding: 20px 12px; }
+    h1 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Stream Reels <span class="badge">Cách B</span></h1>
+  <div class="sub">
+    <code>yt-dlp -g</code> → proxy stream → HTML5 player &nbsp;·&nbsp;
+    <code id="serverLabel">…</code>
+  </div>
+
+  <div class="presets">
+    <button onclick="setUrl('https://www.facebook.com/reel/1658929128587262')">FB Reel #1</button>
+    <button onclick="setUrl('https://www.facebook.com/reel/1090214202289169')">FB Reel #2</button>
+    <button onclick="setUrl('https://www.facebook.com/reel/982172340489490')">FB Reel #3</button>
+    <button onclick="setUrl('https://www.tiktok.com/@tiktok/video/7554941202322533671')">TikTok</button>
+  </div>
+
+  <div class="input-row">
+    <input id="urlInput" type="url" placeholder="https://www.facebook.com/reel/..." autofocus spellcheck="false">
+    <button id="playBtn" onclick="doPlay()">▶ Play</button>
+  </div>
+
+  <div class="player-wrap">
+    <video id="videoPlayer" controls playsinline preload="auto"></video>
+    <div class="placeholder" id="placeholder">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <div>Enter a Reel URL and press <strong>Play</strong></div>
+      <div style="font-size:12px;color:#444;margin-top:4px">Streaming trực tiếp qua proxy</div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <span id="statusDot"><span class="dot idle"></span> Idle</span>
+    <span class="meta" id="metaInfo"></span>
+  </div>
+
+  <div class="log-box" id="logBox"></div>
+
+  <hr>
+
+  <div style="font-size:12px;color:#555;line-height:1.8">
+    <strong>Cách B — Streaming trực tiếp:</strong><br>
+    <code style="background:#1a1a1a;padding:2px 6px;border-radius:3px">yt-dlp -g "URL"</code> → lấy stream URL thật → proxy CDN → HTML5 video<br>
+    Không tải file, phát gần như ngay lập tức.
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var urlInput = document.getElementById('urlInput');
+  var playBtn  = document.getElementById('playBtn');
+  var video    = document.getElementById('videoPlayer');
+  var placeholder = document.getElementById('placeholder');
+  var statusDot   = document.getElementById('statusDot');
+  var metaInfo    = document.getElementById('metaInfo');
+  var logBox      = document.getElementById('logBox');
+  var serverLabel = document.getElementById('serverLabel');
+
+  serverLabel.textContent = '/api/play (server-side proxy)';
+
+  function setUrl(u) { urlInput.value = u; }
+
+  function setStatus(state, msg) {
+    var cls = state;
+    if (state === 'idle')    cls = 'idle';
+    if (state === 'loading') cls = 'loading';
+    if (state === 'playing') cls = 'playing';
+    if (state === 'error')   cls = 'error';
+    statusDot.innerHTML = '<span class="dot ' + cls + '"></span> ' + msg;
+  }
+
+  function log(msg, cls) {
+    cls = cls || '';
+    var line = document.createElement('div');
+    var t = '[' + new Date().toLocaleTimeString() + ']';
+    line.innerHTML = '<span class="t">' + t + '</span> <span class="' + cls + '">' + escHtml(msg) + '</span>';
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function doPlay() {
+    var rawUrl = urlInput.value.trim();
+    if (!rawUrl) { log('Enter a URL first', 'err'); return; }
+
+    var startTs = Date.now();
+
+    placeholder.style.display = 'none';
+    video.src = '';
+    video.load();
+    setStatus('loading', 'Resolving & streaming…');
+    log('Resolving: ' + rawUrl.substring(0, 80), 'info');
+    playBtn.disabled = true;
+    playBtn.textContent = '…';
+
+    var playUrl = '/api/play?url=' + encodeURIComponent(rawUrl);
+
+    log('GET /api/play (server-side proxy, API key hidden)', 'info');
+
+    video.src = playUrl;
+    video.load();
+
+    video.play().then(function () {
+      var elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+      log('Playing! (' + elapsed + 's to first frame)', 'ok');
+      setStatus('playing', 'Playing');
+    }).catch(function (e) {
+      setStatus('error', 'Play failed');
+      log('PLAY ERROR: ' + e.message + ' (code ' + (video.error ? video.error.code : '?') + ')', 'err');
+    });
+  }
+
+  video.addEventListener('playing', function () {
+    setStatus('playing', 'Playing');
+    var elapsed = video.duration ? video.duration.toFixed(1) + 's' : '?';
+    metaInfo.textContent = video.videoWidth + 'x' + video.videoHeight + ' · ' + elapsed;
+    log('Video playing – ' + video.videoWidth + 'x' + video.videoHeight, 'ok');
+  });
+
+  video.addEventListener('loadedmetadata', function () {
+    log('Metadata: ' + video.videoWidth + 'x' + video.videoHeight + ', ' + (video.duration || '?').toFixed(1) + 's', 'ok');
+    metaInfo.textContent = video.videoWidth + 'x' + video.videoHeight + ' · ' + (video.duration ? video.duration.toFixed(1) + 's' : '');
+  });
+
+  video.addEventListener('waiting', function () {
+    setStatus('loading', 'Buffering…');
+    log('Buffering…', 'warn');
+  });
+
+  video.addEventListener('canplay', function () {
+    setStatus('playing', 'Ready');
+  });
+
+  video.addEventListener('error', function () {
+    var c = video.error ? video.error.code : 0;
+    var msgs = {1:'Aborted',2:'Network error',3:'Decode error',4:'Format not supported'};
+    setStatus('error', msgs[c] || 'Error ' + c);
+    log('Video error: ' + (msgs[c] || 'code ' + c), 'err');
+  });
+
+  video.addEventListener('ended', function () {
+    setStatus('idle', 'Ended');
+    log('Playback ended', 'ok');
+  });
+
+  video.addEventListener('suspend', function () {
+    log('Video load suspended', 'warn');
+  });
+
+  video.addEventListener('loadstart', function () {
+    log('Video load started', 'info');
+  });
+
+  video.addEventListener('progress', function () {
+    playBtn.disabled = false;
+    playBtn.textContent = '▶ Play';
+  });
+
+  urlInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') doPlay();
+  });
+
+  window.setUrl = setUrl;
+  window.doPlay = doPlay;
+
+  log('demo2 ready — Cách B: proxy stream qua /api/play', 'ok');
+  log('API key kept on server — safe from client-side theft', 'ok');
+  setStatus('idle', 'Idle — enter URL and press Play');
+})();
+</script>
+</body>
+</html>
