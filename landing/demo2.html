@@ -263,6 +263,14 @@
   log('demo2 ready — Cách B: proxy stream qua /api/play', 'ok');
   log('API key kept on server — safe from client-side theft', 'ok');
   setStatus('idle', 'Idle — enter URL and press Play');
+
+  var params = new URLSearchParams(window.location.search);
+  var autoUrl = params.get('url');
+  if (autoUrl && /^https?:\/\//.test(autoUrl)) {
+    urlInput.value = autoUrl;
+    log('Auto-load from URL param: ' + autoUrl.substring(0, 80), 'info');
+    setTimeout(doPlay, 300);
+  }
 })();
 </script>
 </body>
