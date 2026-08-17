@@ -160,6 +160,17 @@
     }
     #player-title { font-size: 1rem; font-weight: 700; }
     #player-help { color: #aaa; font-size: 0.78rem; white-space: nowrap; }
+    #seek-bar {
+      position: absolute; left: 0; right: 0; bottom: 60px; height: 3px;
+      background: rgba(255,255,255,0.15); z-index: 10;
+    }
+    #seek-bar-fill { height: 100%; width: 0%; background: #e94560; transition: width 0.1s; }
+    #seek-indicator {
+      display: none; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%); background: rgba(0,0,0,0.7);
+      color: #fff; font-size: 1.6rem; font-weight: 700; padding: 10px 24px;
+      border-radius: 10px; pointer-events: none; z-index: 20;
+    }
     #error {
       display: none;
       margin-top: 4px;
@@ -204,9 +215,11 @@
   <section id="player">
     <video id="video" playsinline></video>
     <div id="player-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-size:1.1rem;display:none">Loading...</div>
+    <div id="seek-bar"><div id="seek-bar-fill"></div></div>
+    <div id="seek-indicator"></div>
     <div id="player-overlay">
       <div id="player-title"></div>
-      <div id="player-help">← → Switch &nbsp; OK: pause &nbsp; Back: feed</div>
+      <div id="player-help">← → Seek &nbsp; OK: pause &nbsp; Back: feed</div>
     </div>
   </section>
 

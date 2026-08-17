@@ -27,6 +27,8 @@
   var playerLoadingEl = document.getElementById('player-loading');
   var video = document.getElementById('video');
   var playerTitleEl = document.getElementById('player-title');
+  var seekBarFill = document.getElementById('seek-bar-fill');
+  var seekIndicator = document.getElementById('seek-indicator');
   var setupEl = document.getElementById('setup');
   var setupCodeEl = document.getElementById('setup-code');
   var setupQrEl = document.getElementById('setup-qr');
@@ -584,6 +586,33 @@
     }
   }
 
+  var seekIndicatorTimer = null;
+  function seekVideo(seconds) {
+    if (!video || !isPlayerOpen || !video.duration) return;
+    var target = video.currentTime + seconds;
+    if (target < 0) target = 0;
+    if (target > video.duration) target = video.duration;
+    video.currentTime = target;
+    updateSeekBar();
+    showSeekIndicator(seconds > 0 ? '+' + seconds + 's' : seconds + 's');
+  }
+
+  function updateSeekBar() {
+    if (!video || !seekBarFill) return;
+    var pct = video.duration ? (video.currentTime / video.duration) * 100 : 0;
+    seekBarFill.style.width = pct + '%';
+  }
+
+  function showSeekIndicator(text) {
+    if (!seekIndicator) return;
+    seekIndicator.textContent = text;
+    seekIndicator.style.display = 'block';
+    clearTimeout(seekIndicatorTimer);
+    seekIndicatorTimer = setTimeout(function () {
+      seekIndicator.style.display = 'none';
+    }, 800);
+  }
+
   function moveSelection(delta) {
     if (!items.length) return;
     selectedIndex += delta;
@@ -627,6 +656,17 @@
       if (key === 'Enter' || key === ' ' || key === 'MediaPlayPause') {
         event.preventDefault();
         togglePlayback();
+        return;
+      }
+      if (key === 'ArrowLeft') {
+        event.preventDefault();
+        seekVideo(-10);
+        return;
+      }
+      if (key === 'ArrowRight') {
+        event.preventDefault();
+        seekVideo(10);
+        return;
       }
       return;
     }
@@ -738,6 +778,7 @@
       var item = selectedItem();
       if (item) playItem(item);
     });
+    video.addEventListener('timeupdate', updateSeekBar);
   }
 
   document.addEventListener('visibilitychange', function () {
