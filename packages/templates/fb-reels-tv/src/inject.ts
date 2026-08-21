@@ -1,6 +1,6 @@
 (function () {
   var WORKER_URL = 'https://shortvideo-feed.dvt-kisu.workers.dev';
-  var FALLBACK_RESOLVER_URL = 'http://84.8.220.24:8000';
+  var FALLBACK_RESOLVER_URL = 'https://shortvideo-resolver.fly.dev';
   var FALLBACK_API_KEY = '299145bbcefca5e3dd0f193dc6d187b0';
   var POLL_INTERVAL = 5000;
   var SUGGEST_POLL_INTERVAL = 10000;
