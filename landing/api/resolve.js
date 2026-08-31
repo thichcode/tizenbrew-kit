@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing or invalid url' });
   }
 
-  const backend = process.env.BACKEND_URL || 'https://shortvideo-resolver.fly.dev';
+  const backend = process.env.BACKEND_URL || 'https://shortvideo-resolver.onrender.com';
   const apiKey = process.env.BACKEND_API_KEY || '299145bbcefca5e3dd0f193dc6d187b0';
 
   try {
