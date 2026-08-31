@@ -2,7 +2,8 @@ services:
   - type: web
     name: shortvideo-resolver
     runtime: docker
-    dockerfilePath: backend/yt-dlp-resolver/Dockerfile
+    rootDir: backend/yt-dlp-resolver
+    dockerfilePath: Dockerfile
     envVars:
       - key: API_KEY
         value: 299145bbcefca5e3dd0f193dc6d187b0
