@@ -165,9 +165,27 @@
   var playerError = document.getElementById('playerError');
   var dpadHelp = document.getElementById('dpadHelp');
 
+  function genCode() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var c = '';
+    for (var i = 0; i < 6; i++) c += chars.charAt(Math.floor(Math.random() * chars.length));
+    return c;
+  }
+
+  function showQR(code) {
+    var setupUrl = 'https://shortvideo-feed.dvt-kisu.workers.dev/setup?code=' + encodeURIComponent(code);
+    document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(setupUrl);
+    document.getElementById('qrSection').style.display = 'block';
+  }
+
   codeInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') connect();
   });
+
+  var defaultCode = genCode();
+  codeInput.value = defaultCode;
+  showQR(defaultCode);
+  connect();
 
   function connect() {
     var code = codeInput.value.trim().toUpperCase();
@@ -186,9 +204,7 @@
       connectBtn.textContent = 'Reconnect';
       dpadHelp.style.display = 'block';
       pollTimer = setInterval(fetchFeed, 8000);
-      var setupUrl = 'https://shortvideo-feed.dvt-kisu.workers.dev/setup?code=' + encodeURIComponent(code);
-      document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(setupUrl);
-      document.getElementById('qrSection').style.display = 'block';
+      showQR(code);
     }).catch(function(err) {
       connectError.textContent = 'Cannot connect: ' + err.message;
       connectBtn.disabled = false;
