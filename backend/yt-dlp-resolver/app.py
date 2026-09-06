@@ -30,7 +30,7 @@ async def lifespan(application: FastAPI):
         yield
 
 
-app = FastAPI(title="yt-dlp Resolver", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="yt-dlp Resolver", version="0.4.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,9 +43,10 @@ app.add_middleware(
 API_KEY = os.environ.get("API_KEY", "")
 YT_DLP = os.environ.get("YT_DLP_PATH", "yt-dlp")
 FACEBOOK_FORMAT = "hd/sd/b"
-SOURCE_HOST_SUFFIXES = ("facebook.com", "fb.watch", "tiktok.com", "bilibili.tv")
+SOURCE_HOST_SUFFIXES = ("facebook.com", "fb.watch", "tiktok.com", "bilibili.tv", "youtube.com", "youtu.be")
 TIKTOK_CDN_HOST_SUFFIXES = ("tiktok.com", "tiktokcdn.com", "tiktokv.com", "byteoversea.com")
-VIDEO_CDN_HOST_SUFFIXES = ("fbcdn.net", "bilivideo.com", *TIKTOK_CDN_HOST_SUFFIXES)
+YOUTUBE_CDN_HOST_SUFFIXES = ("googlevideo.com", "youtube.com")
+VIDEO_CDN_HOST_SUFFIXES = ("fbcdn.net", "bilivideo.com", *TIKTOK_CDN_HOST_SUFFIXES, *YOUTUBE_CDN_HOST_SUFFIXES)
 
 BILIBILI_FORMAT = "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -152,6 +153,10 @@ def is_facebook_url(url: str) -> bool:
 
 def is_bilibili_url(url: str) -> bool:
     return bool(re.search(r"(?:www\.)?bilibili\.tv", url))
+
+
+def is_youtube_url(url: str) -> bool:
+    return bool(re.search(r"(?:www\.)?(?:youtube\.com|youtu\.be)", url))
 
 
 def tiktok_open_url(url: str):
@@ -359,6 +364,24 @@ def resolve_and_get_cdn(url: str) -> str:
             raise HTTPException(status_code=422, detail="No video URL found")
         return video_url
 
+    if is_youtube_url(url):
+        extra_args = [
+            "-f", "best[ext=mp4]/best",
+            "--user-agent", UA,
+            "--no-check-certificates",
+        ]
+        r = run_yt_dlp(url, extra_args)
+        if r.returncode != 0:
+            raise HTTPException(status_code=422, detail=r.stderr.strip()[-500:] or "yt-dlp failed")
+        try:
+            data = json.loads(r.stdout.strip())
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=500, detail="Failed to parse yt-dlp output")
+        video_url = extract_video_url(data)
+        if not video_url:
+            raise HTTPException(status_code=422, detail="No video URL found")
+        return video_url
+
     return url
 
 
@@ -436,7 +459,7 @@ def build_bilibili_dash_mpd(source_url: str) -> str:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": "0.3.0"}
+    return {"ok": True, "version": "0.4.0"}
 
 
 @app.get("/resolve", response_model=ResolveResponse)
@@ -467,6 +490,13 @@ def resolve(url: str, x_api_key: str | None = Header(None)):
         extra_args = [
             "-f",
             BILIBILI_FORMAT,
+            "--user-agent",
+            UA,
+        ]
+    elif is_youtube_url(url):
+        extra_args = [
+            "-f", "best[ext=mp4]/best",
+            "--no-check-certificates",
             "--user-agent",
             UA,
         ]
