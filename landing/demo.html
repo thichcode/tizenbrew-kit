@@ -113,7 +113,7 @@
     <div><button id="connectBtn" onclick="connect()">Connect</button></div>
     <div class="error" id="connectError"></div>
     <div class="connected" id="connectSuccess"></div>
-    <div class="qr-section" id="qrSection" style="display:none">
+    <div class="qr-section" id="qrSection">
       <img id="qrImg" alt="QR Code" />
       <div class="qr-label">Scan with phone to open setup page</div>
     </div>
@@ -175,7 +175,6 @@
   function showQR(code) {
     var setupUrl = 'https://shortvideo-feed.dvt-kisu.workers.dev/setup?code=' + encodeURIComponent(code);
     document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(setupUrl);
-    document.getElementById('qrSection').style.display = 'block';
   }
 
   codeInput.addEventListener('keydown', function(e) {
