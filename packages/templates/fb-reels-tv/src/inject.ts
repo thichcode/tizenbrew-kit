@@ -589,10 +589,9 @@
   var seekIndicatorTimer = null;
   function seekVideo(seconds) {
     if (!video || !isPlayerOpen) return;
-    if (!video.duration || !isFinite(video.duration)) return;
     var target = video.currentTime + seconds;
     if (target < 0) target = 0;
-    if (target > video.duration) target = video.duration;
+    if (isFinite(video.duration) && target > video.duration) target = video.duration;
     video.currentTime = target;
     updateSeekBar();
     showSeekIndicator(seconds > 0 ? '+' + seconds + 's' : seconds + 's');
