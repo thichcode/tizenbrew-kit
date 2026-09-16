@@ -6,7 +6,7 @@ export default {
   targetUrl: 'https://find-football-tizenbrew.onrender.com',
   inject: {
     scripts: ['src/inject.ts'],
-    styles: ['src/style.css'],
+    styles: [],
   },
   tvKeys: {
     arrows: true,

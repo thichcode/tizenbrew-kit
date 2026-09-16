@@ -6,10 +6,8 @@
   var polling = false;
   var statusEl = null;
   var listEl = null;
-  var settingsEl = null;
-  var baseInput = null;
   var video = null;
-  var screen = 'home'; // home | list | player
+  var screen = 'home';
 
   var KEY_CODES = {
     13: 'Enter', 27: 'Escape', 32: ' ',
@@ -19,12 +17,43 @@
     427: 'ChannelUp', 428: 'ChannelDown'
   };
 
+  /* ---------- inject CSS ---------- */
+  function injectCSS() {
+    var s = document.createElement('style');
+    s.textContent = '*{margin:0;padding:0;box-sizing:border-box}'
+      + 'body{background:#0a0a0a;color:#eee;font-family:system-ui,sans-serif;height:100vh;overflow:hidden}'
+      + '#home-screen{display:flex;align-items:center;justify-content:center;height:100vh;background:linear-gradient(135deg,#0a1628,#1a0a2e)}'
+      + '.home-center{text-align:center}'
+      + '.home-center h1{font-size:48px;color:#ffd600;margin-bottom:40px;font-weight:700}'
+      + '#btn-crawl{padding:28px 72px;font-size:32px;font-weight:700;background:#ffd600;color:#000;border:none;border-radius:16px;cursor:pointer;outline:none}'
+      + '#btn-crawl:focus{transform:scale(1.05);box-shadow:0 0 0 4px #ffd600,0 0 30px rgba(255,214,0,.4)}'
+      + '#btn-crawl:disabled{opacity:.5;cursor:default}'
+      + '#st{margin-top:20px;font-size:22px;color:#888}'
+      + '#list-screen{display:flex;flex-direction:column;height:100vh}'
+      + '.list-header{display:flex;gap:12px;align-items:center;padding:14px 24px;background:#111;border-bottom:1px solid #333}'
+      + '.list-header button{padding:12px 28px;font-size:22px;font-weight:600;background:#222;color:#fff;border:2px solid #555;border-radius:8px;cursor:pointer;outline:none}'
+      + '.list-header button:focus{border-color:#ffd600;color:#ffd600;background:#333}'
+      + '#list{flex:1;overflow-y:auto;padding:12px 0}'
+      + '.match-row{display:flex;align-items:center;gap:16px;padding:16px 28px;border:2px solid transparent;border-bottom:1px solid #222;cursor:pointer;outline:none}'
+      + '.match-row:focus{background:#1a1a2e;border-color:#ffd600}'
+      + '.match-info{display:flex;align-items:center;gap:12px;flex:1}'
+      + '.match-time{color:#7db4ff;font-size:20px;font-weight:600;min-width:100px}'
+      + '.match-title{font-size:24px;color:#fff}'
+      + '.match-league{font-size:16px;color:#666;min-width:120px;text-align:right}'
+      + '.live{background:#e53935;color:#fff;font-size:14px;font-weight:700;padding:3px 10px;border-radius:4px}'
+      + '.play-btn{padding:12px 24px;font-size:24px;background:#ffd600;color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:700;outline:none}'
+      + '.play-btn:focus{box-shadow:0 0 0 3px #ffd600}'
+      + '.empty{padding:40px;text-align:center;color:#666;font-size:24px}'
+      + '#player{position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:999;display:none}'
+      + '#list::-webkit-scrollbar{width:8px}'
+      + '#list::-webkit-scrollbar-track{background:#0a0a0a}'
+      + '#list::-webkit-scrollbar-thumb{background:#444;border-radius:4px}';
+    document.head.appendChild(s);
+  }
+
   /* ---------- localStorage ---------- */
   function getBaseUrl() {
     try { return localStorage.getItem(LS_KEY) || DEFAULT_BASE; } catch (e) { return DEFAULT_BASE; }
-  }
-  function setBaseUrl(url) {
-    try { localStorage.setItem(LS_KEY, url.replace(/\/+$/, '')); } catch (e) {}
   }
 
   /* ---------- XHR ---------- */
@@ -50,7 +79,7 @@
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ' ' + (dd < 10 ? '0' : '') + dd + '/' + (mo < 10 ? '0' : '') + mo;
   }
 
-  function escapeHtml(s) {
+  function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
@@ -58,13 +87,11 @@
   function renderHome() {
     screen = 'home';
     document.body.innerHTML =
-      '<div id="home-screen">' +
-        '<div class="home-center">' +
-          '<h1>FindFootball</h1>' +
-          '<button id="btn-crawl">Quet lich moi</button>' +
-          '<div id="st"></div>' +
-        '</div>' +
-      '</div>';
+      '<div id="home-screen"><div class="home-center">'
+      + '<h1>FindFootball</h1>'
+      + '<button id="btn-crawl">Quet lich moi</button>'
+      + '<div id="st"></div>'
+      + '</div></div>';
     statusEl = document.getElementById('st');
     var crawlBtn = document.getElementById('btn-crawl');
     if (crawlBtn) crawlBtn.addEventListener('click', onCrawl);
@@ -74,22 +101,21 @@
   function renderList() {
     screen = 'list';
     document.body.innerHTML =
-      '<div id="list-screen">' +
-        '<div class="list-header">' +
-          '<button id="btn-back">Quay lai</button>' +
-          '<button id="btn-crawl2">Quet lai</button>' +
-          '<span id="st"></span>' +
-        '</div>' +
-        '<div id="list"></div>' +
-      '</div>' +
-      '<video id="player" playsinline style="display:none"></video>';
+      '<div id="list-screen">'
+      + '<div class="list-header">'
+      + '<button id="btn-back">Quay lai</button>'
+      + '<button id="btn-crawl2">Quet lai</button>'
+      + '<span id="st"></span>'
+      + '</div>'
+      + '<div id="list"></div></div>'
+      + '<video id="player" playsinline style="display:none"></video>';
     statusEl = document.getElementById('st');
     listEl = document.getElementById('list');
     video = document.getElementById('player');
     document.getElementById('btn-back').addEventListener('click', renderHome);
     document.getElementById('btn-crawl2').addEventListener('click', onCrawl);
     buildMatchList();
-    setTimeout(function () { focusFirst(); }, 100);
+    setTimeout(focusFirst, 100);
   }
 
   function buildMatchList() {
@@ -109,17 +135,15 @@
         var row = document.createElement('div');
         row.className = 'match-row';
         row.setAttribute('tabindex', '0');
-        var time = fmtTime(m.kickoffISO);
         var badge = m.isLive ? '<span class="live">LIVE</span>' : '';
         var playBtn = hasStream ? '<button class="play-btn" data-idx="' + idx + '">&#9654;</button>' : '';
         row.innerHTML =
-          '<div class="match-info">' +
-            '<span class="match-time">' + escapeHtml(time) + '</span>' +
-            '<span class="match-title">' + escapeHtml(m.home + ' vs ' + m.away) + '</span>' +
-            badge +
-          '</div>' +
-          '<div class="match-league">' + escapeHtml(m.league || '') + '</div>' +
-          playBtn;
+          '<div class="match-info">'
+          + '<span class="match-time">' + esc(fmtTime(m.kickoffISO)) + '</span>'
+          + '<span class="match-title">' + esc(m.home + ' vs ' + m.away) + '</span>'
+          + badge + '</div>'
+          + '<div class="match-league">' + esc(m.league || '') + '</div>'
+          + playBtn;
         if (hasStream) {
           var pb = row.querySelector('.play-btn');
           if (pb) pb.addEventListener('click', function (e) {
@@ -264,14 +288,9 @@
     }
   }
 
-  /* ---------- settings ---------- */
-  function toggleSettings(show) {
-    if (settingsEl) settingsEl.style.display = show ? 'block' : 'none';
-    if (show && baseInput) baseInput.value = getBaseUrl();
-  }
-
   /* ---------- start ---------- */
   function start() {
+    injectCSS();
     renderHome();
     registerKeys();
     document.addEventListener('keydown', handleKey);
