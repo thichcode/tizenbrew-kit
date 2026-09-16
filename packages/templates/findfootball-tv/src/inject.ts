@@ -5,13 +5,11 @@
   var focusIdx = 0;
   var polling = false;
   var statusEl = null;
-  var nowEl = null;
   var listEl = null;
-  var countEl = null;
   var settingsEl = null;
   var baseInput = null;
-  var player = null;
   var video = null;
+  var screen = 'home'; // home | list | player
 
   var KEY_CODES = {
     13: 'Enter', 27: 'Escape', 32: ' ',
@@ -29,7 +27,7 @@
     try { localStorage.setItem(LS_KEY, url.replace(/\/+$/, '')); } catch (e) {}
   }
 
-  /* ---------- XHR helper ---------- */
+  /* ---------- XHR ---------- */
   function request(method, path, body, cb) {
     var xhr = new XMLHttpRequest();
     xhr.open(method, getBaseUrl() + path, true);
@@ -38,15 +36,13 @@
       if (xhr.readyState !== 4) return;
       if (xhr.status >= 200 && xhr.status < 300) {
         try { cb(null, JSON.parse(xhr.responseText || '{}')); } catch (e) { cb(e); }
-      } else {
-        cb(new Error('HTTP ' + xhr.status));
-      }
+      } else { cb(new Error('HTTP ' + xhr.status)); }
     };
     xhr.onerror = function () { cb(new Error('Network error')); };
     xhr.send(body === undefined ? null : JSON.stringify(body));
   }
 
-  /* ---------- time fmt ---------- */
+  /* ---------- time ---------- */
   function fmtTime(iso) {
     var d = new Date(iso);
     if (isNaN(d.getTime())) return '';
@@ -54,244 +50,176 @@
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ' ' + (dd < 10 ? '0' : '') + dd + '/' + (mo < 10 ? '0' : '') + mo;
   }
 
-  /* ---------- data helpers ---------- */
-  function toPlayables(list) {
-    var out = [];
-    var sorted = list.slice().sort(function (a, b) {
-      return new Date(a.kickoffISO).getTime() - new Date(b.kickoffISO).getTime();
-    });
-    for (var i = 0; i < sorted.length; i++) {
-      var m = sorted[i];
-      var links = m.links || [];
-      for (var j = 0; j < links.length; j++) {
-        var l = links[j];
-        if (!l.streamUrl) continue;
-        out.push({
-          id: out.length,
-          title: m.home + ' vs ' + m.away + ' \u2014 ' + l.label,
-          time: fmtTime(m.kickoffISO),
-          streamUrl: l.streamUrl,
-          pageUrl: l.url
-        });
-      }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ---------- render ---------- */
+  function renderHome() {
+    screen = 'home';
+    document.body.innerHTML =
+      '<div id="home-screen">' +
+        '<div class="home-center">' +
+          '<h1>FindFootball</h1>' +
+          '<button id="btn-crawl">Quet lich moi</button>' +
+          '<div id="st"></div>' +
+        '</div>' +
+      '</div>';
+    statusEl = document.getElementById('st');
+    var crawlBtn = document.getElementById('btn-crawl');
+    if (crawlBtn) crawlBtn.addEventListener('click', onCrawl);
+    setTimeout(function () { if (crawlBtn) crawlBtn.focus(); }, 100);
+  }
+
+  function renderList() {
+    screen = 'list';
+    document.body.innerHTML =
+      '<div id="list-screen">' +
+        '<div class="list-header">' +
+          '<button id="btn-back">Quay lai</button>' +
+          '<button id="btn-crawl2">Quet lai</button>' +
+          '<span id="st"></span>' +
+        '</div>' +
+        '<div id="list"></div>' +
+      '</div>' +
+      '<video id="player" playsinline style="display:none"></video>';
+    statusEl = document.getElementById('st');
+    listEl = document.getElementById('list');
+    video = document.getElementById('player');
+    document.getElementById('btn-back').addEventListener('click', renderHome);
+    document.getElementById('btn-crawl2').addEventListener('click', onCrawl);
+    buildMatchList();
+    setTimeout(function () { focusFirst(); }, 100);
+  }
+
+  function buildMatchList() {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    if (!matches.length) {
+      listEl.innerHTML = '<div class="empty">Chua co tran nao. Quet lich moi.</div>';
+      return;
     }
-    return out;
+    for (var i = 0; i < matches.length; i++) {
+      (function (idx) {
+        var m = matches[idx];
+        var hasStream = false;
+        for (var j = 0; j < (m.links || []).length; j++) {
+          if (m.links[j].streamUrl) { hasStream = true; break; }
+        }
+        var row = document.createElement('div');
+        row.className = 'match-row';
+        row.setAttribute('tabindex', '0');
+        var time = fmtTime(m.kickoffISO);
+        var badge = m.isLive ? '<span class="live">LIVE</span>' : '';
+        var playBtn = hasStream ? '<button class="play-btn" data-idx="' + idx + '">&#9654;</button>' : '';
+        row.innerHTML =
+          '<div class="match-info">' +
+            '<span class="match-time">' + escapeHtml(time) + '</span>' +
+            '<span class="match-title">' + escapeHtml(m.home + ' vs ' + m.away) + '</span>' +
+            badge +
+          '</div>' +
+          '<div class="match-league">' + escapeHtml(m.league || '') + '</div>' +
+          playBtn;
+        if (hasStream) {
+          var pb = row.querySelector('.play-btn');
+          if (pb) pb.addEventListener('click', function (e) {
+            e.stopPropagation();
+            playMatch(idx);
+          });
+        }
+        row.addEventListener('click', function () {
+          if (hasStream) playMatch(idx);
+        });
+        listEl.appendChild(row);
+      })(i);
+    }
   }
-
-  function loadList() {
-    setStatus('Dang tai lich...');
-    request('GET', '/matches.json', undefined, function (err, data) {
-      if (err) { setStatus('Loi mang: ' + err.message); return; }
-      matches = Array.isArray(data) ? data : [];
-      renderList();
-      var p = toPlayables(matches);
-      setCount(p.length);
-      setStatus(p.length ? 'San sang (' + p.length + ' link xem)' : 'Chua co link xem. Bam "Quet lich moi".');
-      focusItem(0);
-    });
-  }
-
-  function getPlayables() { return toPlayables(matches); }
 
   /* ---------- play ---------- */
-  function playAt(i) {
-    var p = getPlayables();
-    var it = p[i];
-    if (!it) return;
-    setNow('Dang phat: ' + it.title);
-    setStatus('Dang tai stream...');
-    stopPlayer();
-    if (player) {
-      player.play(it.streamUrl);
-    } else {
-      playNative(it.streamUrl);
+  function playMatch(idx) {
+    var m = matches[idx];
+    if (!m) return;
+    var streamUrl = null;
+    for (var j = 0; j < (m.links || []).length; j++) {
+      if (m.links[j].streamUrl) { streamUrl = m.links[j].streamUrl; break; }
     }
-  }
-
-  function playNative(url) {
-    if (!video) { setStatus('No video element'); return; }
-    video.src = url;
+    if (!streamUrl) return;
+    screen = 'player';
+    if (listEl) listEl.style.display = 'none';
+    var hdr = document.querySelector('.list-header');
+    if (hdr) hdr.style.display = 'none';
+    video.style.display = 'block';
+    video.src = streamUrl;
     var r = video.play();
-    if (r && r.catch) r.catch(function () { setStatus('Play failed'); });
+    if (r && r.catch) r.catch(function () {});
   }
 
   function stopPlayer() {
-    if (player) { try { player.stop(); } catch (e) {} }
     if (video) {
       try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
+      video.style.display = 'none';
     }
-  }
-
-  function pauseToggle() {
-    if (player) { player.pauseToggle(); return; }
-    if (!video) return;
-    if (video.paused) { video.play().catch(function () {}); }
-    else { video.pause(); }
-  }
-
-  /* ---------- AVPlay wrapper ---------- */
-  function getAvplay() {
-    try {
-      var w = window;
-      return w.webapis && w.webapis.avplay ? w.webapis.avplay : null;
-    } catch (e) { return null; }
-  }
-
-  function createTvPlayer() {
-    return {
-      _avplay: false,
-      _video: video,
-      play: function (url) {
-        this.stop();
-        var self = this;
-        var av = getAvplay();
-        if (av) {
-          try {
-            self._avplay = true;
-            av.open(url);
-            av.setDisplayRect(0, 0, 1920, 1080);
-            av.setListener({
-              onbufferingstart: function () {},
-              onbufferingcomplete: function () { setStatus('Dang phat'); },
-              onerror: function () { self._avplay = false; playNative(url); }
-            });
-            av.prepareAsync(function () { av.play(); }, function () { self._avplay = false; playNative(url); });
-            return;
-          } catch (e) { self._avplay = false; }
-        }
-        playNative(url);
-      },
-      stop: function () {
-        var av = getAvplay();
-        if (this._avplay && av) {
-          try { av.stop(); av.close(); } catch (e) {}
-        }
-        this._avplay = false;
-        if (video) {
-          try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
-        }
-      },
-      pauseToggle: function () {
-        var av = this._avplay ? getAvplay() : null;
-        if (av) { try { av.pause(); return; } catch (e) {} }
-        if (!video) return;
-        if (video.paused) { video.play().catch(function () {}); } else { video.pause(); }
-      }
-    };
+    if (listEl) listEl.style.display = '';
+    var hdr = document.querySelector('.list-header');
+    if (hdr) hdr.style.display = '';
+    screen = 'list';
   }
 
   /* ---------- crawl ---------- */
   function onCrawl() {
     if (polling) return;
-    setStatus('Dang goi crawl...');
+    setStatus('Dang quet lich...');
     polling = true;
+    var crawlBtn = document.getElementById('btn-crawl');
+    if (crawlBtn) crawlBtn.disabled = true;
     request('POST', '/api/crawl', undefined, function (err, r) {
-      if (err) { polling = false; setStatus('Crawl loi. Thu lai sau.'); return; }
-      setStatus(r.ok ? 'Quet xong: ' + (r.count || '?') + ' tran' : 'Crawl loi');
+      if (err) { polling = false; setStatus('Loi. Thu lai.'); if (crawlBtn) crawlBtn.disabled = false; return; }
+      setStatus(r.ok ? 'Quet xong: ' + (r.count || '?') + ' tran' : 'Loi crawl');
       polling = false;
-      loadList();
+      if (crawlBtn) crawlBtn.disabled = false;
+      loadMatches();
     });
   }
 
-  /* ---------- UI helpers ---------- */
+  function loadMatches() {
+    request('GET', '/matches.json', undefined, function (err, data) {
+      if (err) { setStatus('Loi tai du lieu'); return; }
+      matches = Array.isArray(data) ? data : [];
+      if (screen === 'home') {
+        if (matches.length) renderList();
+        else setStatus('Chua co tran. Quet lai.');
+      } else {
+        buildMatchList();
+      }
+    });
+  }
+
   function setStatus(t) { if (statusEl) statusEl.textContent = t; }
-  function setNow(t) { if (nowEl) nowEl.textContent = t; }
-  function setCount(n) { if (countEl) countEl.textContent = n ? n + ' link xem' : ''; }
 
-  function escapeHtml(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  /* ---------- focus ---------- */
+  function getAllFocusable() {
+    var els = [];
+    if (screen === 'home') {
+      var btn = document.getElementById('btn-crawl');
+      if (btn) els.push(btn);
+    } else if (screen === 'list') {
+      var rows = document.querySelectorAll('.match-row');
+      for (var i = 0; i < rows.length; i++) els.push(rows[i]);
+    }
+    return els;
   }
 
-  function renderList() {
-    if (!listEl) return;
-    listEl.innerHTML = '';
-    var p = getPlayables();
-    if (!p.length) {
-      var emp = document.createElement('p');
-      emp.className = 'empty';
-      emp.textContent = 'Chua co link xem. Bam "Quet lich moi".';
-      listEl.appendChild(emp);
-      return;
-    }
-    for (var i = 0; i < p.length; i++) {
-      (function (idx) {
-        var it = p[idx];
-        var b = document.createElement('button');
-        b.className = 'match';
-        b.setAttribute('data-idx', String(idx));
-        b.innerHTML = '<span class="t">' + escapeHtml(it.time) + '</span> <span class="n">' + escapeHtml(it.title) + '</span>';
-        b.addEventListener('click', function () { playAt(idx); });
-        b.addEventListener('focus', function () { focusIdx = idx; });
-        listEl.appendChild(b);
-      })(i);
-    }
-  }
-
-  function focusItem(i) {
-    var nodes = document.querySelectorAll('.match');
-    var n = nodes.length;
-    if (!n) return;
-    focusIdx = ((i % n) + n) % n;
-    var el = nodes[focusIdx];
-    if (el) { el.focus(); el.scrollIntoView(false); }
+  function focusFirst() {
+    var els = getAllFocusable();
+    if (els.length) els[0].focus();
   }
 
   function moveFocus(d) {
-    var nodes = document.querySelectorAll('.match');
-    var n = nodes.length;
-    if (!n) return;
-    focusIdx = ((focusIdx + d) % n + n) % n;
-    var el = nodes[focusIdx];
-    if (el) { el.focus(); el.scrollIntoView(false); }
-  }
-
-  /* ---------- settings ---------- */
-  function toggleSettings(show) {
-    if (settingsEl) settingsEl.style.display = show ? 'block' : 'none';
-    if (show && baseInput) baseInput.value = getBaseUrl();
-  }
-
-  function saveSettings() {
-    if (baseInput && baseInput.value.trim()) setBaseUrl(baseInput.value.trim());
-    toggleSettings(false);
-    loadList();
-  }
-
-  /* ---------- build UI ---------- */
-  function buildUI() {
-    document.body.innerHTML =
-      '<div id="app">' +
-      '<header><h1>FindFootball TV</h1><span id="cnt"></span></header>' +
-      '<div id="main"><div id="player-wrap"><video id="player" playsinline></video>' +
-      '<div id="now">Chua chon tran</div></div>' +
-      '<aside id="side"><div id="actions">' +
-      '<button id="btn-crawl">Quet lich moi</button> ' +
-      '<button id="btn-reload">Tai lai</button> ' +
-      '<button id="btn-settings">Cai dat</button>' +
-      '</div><div id="list"></div></div></div>' +
-      '<div id="settings" style="display:none"><label>Backend URL</label> ' +
-      '<input id="base" type="text"> <button id="btn-save">Luu</button></div>' +
-      '<footer id="bar"><span id="st">Khoi dong...</span></footer></div>';
-    listEl = document.getElementById('list');
-    statusEl = document.getElementById('st');
-    nowEl = document.getElementById('now');
-    countEl = document.getElementById('cnt');
-    settingsEl = document.getElementById('settings');
-    baseInput = document.getElementById('base');
-    video = document.getElementById('player');
-    player = createTvPlayer();
-    var crawlBtn = document.getElementById('btn-crawl');
-    if (crawlBtn) crawlBtn.addEventListener('click', onCrawl);
-    var reloadBtn = document.getElementById('btn-reload');
-    if (reloadBtn) reloadBtn.addEventListener('click', loadList);
-    var settingsBtn = document.getElementById('btn-settings');
-    if (settingsBtn) settingsBtn.addEventListener('click', function () { toggleSettings(true); });
-    var saveBtn = document.getElementById('btn-save');
-    if (saveBtn) saveBtn.addEventListener('click', saveSettings);
-    if (video) {
-      video.addEventListener('error', function () { setStatus('Video error'); });
-      video.addEventListener('playing', function () { setStatus('Dang phat'); });
-    }
+    var els = getAllFocusable();
+    if (!els.length) return;
+    focusIdx = ((focusIdx + d) % els.length + els.length) % els.length;
+    els[focusIdx].focus();
+    els[focusIdx].scrollIntoView(false);
   }
 
   /* ---------- remote ---------- */
@@ -309,36 +237,45 @@
   function handleKey(e) {
     var key = e.key && e.key !== 'Unidentified' ? e.key : KEY_CODES[e.keyCode];
     switch (key) {
-      case 'ArrowUp': case 'ChannelUp': e.preventDefault(); moveFocus(-1); break;
-      case 'ArrowDown': case 'ChannelDown': e.preventDefault(); moveFocus(1); break;
+      case 'ArrowUp': case 'ChannelUp':
+        e.preventDefault(); moveFocus(-1); break;
+      case 'ArrowDown': case 'ChannelDown':
+        e.preventDefault(); moveFocus(1); break;
+      case 'ArrowLeft':
+        e.preventDefault(); moveFocus(-3); break;
+      case 'ArrowRight':
+        e.preventDefault(); moveFocus(3); break;
       case 'Enter':
         e.preventDefault();
         var el = document.activeElement;
-        if (el && el.tagName === 'BUTTON') el.click();
+        if (el && (el.tagName === 'BUTTON' || el.classList.contains('match-row'))) el.click();
         break;
       case ' ': case 'MediaPlayPause': case 'MediaPlay': case 'MediaPause':
-        e.preventDefault(); pauseToggle(); break;
+        e.preventDefault();
+        if (screen === 'player') {
+          if (video) { if (video.paused) video.play().catch(function () {}); else video.pause(); }
+        }
+        break;
       case 'Backspace': case 'Escape':
         e.preventDefault();
-        if (settingsEl && settingsEl.style.display === 'block') { toggleSettings(false); return; }
-        stopPlayer(); setNow('Chua chon tran'); focusItem(0);
-        break;
-      default:
-        if (key && key >= '1' && key <= '9') {
-          var nodes = document.querySelectorAll('.match');
-          var n = parseInt(key, 10);
-          if (n <= nodes.length) { e.preventDefault(); focusItem(n - 1); }
-        }
+        if (screen === 'player') { stopPlayer(); return; }
+        if (screen === 'list') { renderHome(); return; }
         break;
     }
   }
 
+  /* ---------- settings ---------- */
+  function toggleSettings(show) {
+    if (settingsEl) settingsEl.style.display = show ? 'block' : 'none';
+    if (show && baseInput) baseInput.value = getBaseUrl();
+  }
+
   /* ---------- start ---------- */
   function start() {
-    buildUI();
+    renderHome();
     registerKeys();
     document.addEventListener('keydown', handleKey);
-    loadList();
+    loadMatches();
   }
 
   if (document.readyState === 'loading') {
