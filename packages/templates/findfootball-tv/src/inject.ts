@@ -237,8 +237,9 @@
     polling = true;
     var btn = document.getElementById('btn-crawl'); if (btn) btn.disabled = true;
     request('POST', '/api/crawl', undefined, function (err, r) {
-      if (err) { polling = false; setStatus('Loi. Thu lai.'); if (btn) btn.disabled = false; return; }
-      setStatus(r.ok ? 'Quet xong: ' + (r.count || '?') + ' tran' : 'Loi crawl');
+      if (err) { polling = false; setStatus('Loi: ' + (err.message || err)); if (btn) btn.disabled = false; return; }
+      if (!r || !r.ok) { polling = false; setStatus('Loi crawl: ' + (r && r.error || 'unknown')); if (btn) btn.disabled = false; return; }
+      setStatus('Quet xong: ' + (r.count || '?') + ' tran');
       polling = false; if (btn) btn.disabled = false;
       loadMatches();
     });
