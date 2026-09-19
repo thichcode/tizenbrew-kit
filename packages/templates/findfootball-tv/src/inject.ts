@@ -15,6 +15,7 @@
   var blvIdx = 0;
   var blvLinks = [];
   var blvHideTimer = null;
+  var displayMatches = [];
 
   var KEY_CODES = {
     13: 'Enter', 27: 'Escape', 32: ' ',
@@ -85,10 +86,20 @@
   }
 
   function fmtTime(iso) {
-    var d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    var h = d.getHours(), m = d.getMinutes(), dd = d.getDate(), mo = d.getMonth() + 1;
-    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ' ' + (dd < 10 ? '0' : '') + dd + '/' + (mo < 10 ? '0' : '') + mo;
+    var m = String(iso).match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (m) return m[4] + ':' + m[5] + ' ' + m[3] + '/' + m[2] + ' GMT+7';
+    var d = new Date(iso); if (isNaN(d.getTime())) return '';
+    var h = d.getHours(), mi = d.getMinutes(), dd = d.getDate(), mo = d.getMonth() + 1;
+    return (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi + ' ' + (dd < 10 ? '0' : '') + dd + '/' + (mo < 10 ? '0' : '') + mo + ' (local)';
+  }
+  function nearest5(list) {
+    var now = Date.now();
+    var arr = list.slice().sort(function (a, b) { return new Date(a.kickoffISO) - new Date(b.kickoffISO); });
+    var scored = arr.map(function (x) { return { m: x, score: Math.abs(new Date(x.kickoffISO) - now) - (x.isLive ? 1e12 : 0) }; });
+    scored.sort(function (a, b) { return a.score - b.score; });
+    var top = scored.slice(0, 5).map(function (x) { return x.m; });
+    top.sort(function (a, b) { return new Date(a.kickoffISO) - new Date(b.kickoffISO); });
+    return top;
   }
 
   function esc(s) {
@@ -120,13 +131,14 @@
   function buildList() {
     if (!listEl) return;
     listEl.innerHTML = '';
-    if (!matches.length) {
+    displayMatches = nearest5(matches);
+    if (!displayMatches.length) {
       listEl.innerHTML = '<div class="empty">Chua co tran nao. Quet lich moi.</div>';
       return;
     }
-    for (var i = 0; i < matches.length; i++) {
+    for (var i = 0; i < displayMatches.length; i++) {
       (function (idx) {
-        var m = matches[idx];
+        var m = displayMatches[idx];
         var badge = m.isLive ? '<span class="live">LIVE</span>' : '';
         var row = document.createElement('div');
         row.className = 'match-row';
@@ -149,7 +161,7 @@
 
   function showBLVPanel(idx) {
     currentMatchIdx = idx; blvIdx = 0;
-    var m = matches[idx]; if (!m) return;
+    var m = displayMatches[idx]; if (!m) return;
     blvLinks = m.links || [];
     var bl = document.getElementById('blv-list');
     bl.innerHTML = '';
@@ -194,7 +206,7 @@
   }
 
   function playMatch(idx) {
-    var m = matches[idx]; if (!m) return;
+    var m = displayMatches[idx]; if (!m) return;
     var url = null;
     for (var j = 0; j < (m.links || []).length; j++) {
       if (m.links[j].streamUrl) { url = m.links[j].streamUrl; break; }
