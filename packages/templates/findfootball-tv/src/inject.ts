@@ -92,14 +92,17 @@
     var h = d.getHours(), mi = d.getMinutes(), dd = d.getDate(), mo = d.getMonth() + 1;
     return (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi + ' ' + (dd < 10 ? '0' : '') + dd + '/' + (mo < 10 ? '0' : '') + mo + ' (local)';
   }
-  function nearest5(list) {
-    var now = Date.now();
-    var arr = list.slice().sort(function (a, b) { return new Date(a.kickoffISO) - new Date(b.kickoffISO); });
-    var scored = arr.map(function (x) { return { m: x, score: Math.abs(new Date(x.kickoffISO) - now) - (x.isLive ? 1e12 : 0) }; });
-    scored.sort(function (a, b) { return a.score - b.score; });
-    var top = scored.slice(0, 5).map(function (x) { return x.m; });
-    top.sort(function (a, b) { return new Date(a.kickoffISO) - new Date(b.kickoffISO); });
-    return top;
+  function todayStrGMT7() {
+    var d = new Date();
+    var utc = d.getTime() + d.getTimezoneOffset() * 60000;
+    var gmt7 = new Date(utc + 7 * 3600000);
+    return gmt7.toISOString().slice(0, 10);
+  }
+  function todayList(list) {
+    var today = todayStrGMT7();
+    var arr = list.filter(function (x) { return String(x.kickoffISO).slice(0, 10) === today; });
+    arr.sort(function (a, b) { return new Date(a.kickoffISO) - new Date(b.kickoffISO); });
+    return arr;
   }
 
   function esc(s) {
@@ -131,9 +134,9 @@
   function buildList() {
     if (!listEl) return;
     listEl.innerHTML = '';
-    displayMatches = nearest5(matches);
+    displayMatches = todayList(matches);
     if (!displayMatches.length) {
-      listEl.innerHTML = '<div class="empty">Chua co tran nao. Quet lich moi.</div>';
+      listEl.innerHTML = '<div class="empty">Hom nay chua co tran nao.</div>';
       return;
     }
     for (var i = 0; i < displayMatches.length; i++) {
