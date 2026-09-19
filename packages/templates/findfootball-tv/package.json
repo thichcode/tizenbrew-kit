@@ -1,6 +1,6 @@
 {
   "name": "findfootball-tv",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "FindFootball TV client for TizenBrew: trigger crawl + pick HLS streams to play via AVPlay",
   "type": "module",
   "packageType": "app",
