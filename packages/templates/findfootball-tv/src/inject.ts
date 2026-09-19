@@ -185,25 +185,29 @@
   }
 
   function hideBLVPanel() { document.getElementById('blv-panel').style.display = 'none'; clearTimeout(blvHideTimer); }
-  function resetBLVTimer() { clearTimeout(blvHideTimer); blvHideTimer = setTimeout(function () { hideBLVPanel(); }, 10000); }
-
-  function selectBLV(i) {
+  function resetBLVTimer() { clearTimeout(blvHideTimer); blvHideTimer = setTimeout(function () { hideBLVPanel(); }, 15000); }
+  function highlightBLV(i) {
     if (i < 0 || i >= blvLinks.length) return;
     blvIdx = i; resetBLVTimer();
     var btns = document.querySelectorAll('.blv-btn');
     for (var j = 0; j < btns.length; j++) btns[j].className = 'blv-btn' + (j === i ? ' active' : '');
     if (btns[i]) btns[i].focus();
+  }
+
+  function selectBLV(i) {
+    if (i < 0 || i >= blvLinks.length) return;
+    highlightBLV(i);
     var link = blvLinks[i];
-    if (link.streamUrl) { openPlayer(link.streamUrl); return; }
+    if (link.streamUrl) { openPlayer(link.streamUrl); hideBLVPanel(); return; }
     if (!link.url) return;
     showLoading('Dang tim stream (' + link.label + ')...');
     var done = false;
     var timer = setTimeout(function () {
       if (!done) { done = true; hideLoading(); setStatus('Timeout - chon BLV khac'); }
-    }, 20000);
+    }, 30000);
     request('POST', '/api/sniff', { url: link.url }, function (err, r) {
       if (done) return; done = true; clearTimeout(timer);
-      if (!err && r && r.streamUrl) { hideLoading(); openPlayer(r.streamUrl); return; }
+      if (!err && r && r.streamUrl) { hideLoading(); openPlayer(r.streamUrl); hideBLVPanel(); return; }
       hideLoading(); setStatus('Khong tim thay stream - chon BLV khac');
     });
   }
@@ -336,11 +340,14 @@
       switch (key) {
         case 'ArrowDown': e.preventDefault();
           if (document.getElementById('blv-panel').style.display === 'block') {
-            selectBLV(Math.min(blvIdx + 1, blvLinks.length - 1));
+            highlightBLV(Math.min(blvIdx + 1, blvLinks.length - 1));
           } else { showBLVPanel(currentMatchIdx); }
           return;
         case 'ArrowUp': e.preventDefault();
-          if (document.getElementById('blv-panel').style.display === 'block') selectBLV(Math.max(blvIdx - 1, 0));
+          if (document.getElementById('blv-panel').style.display === 'block') highlightBLV(Math.max(blvIdx - 1, 0));
+          return;
+        case 'Enter': e.preventDefault();
+          if (document.getElementById('blv-panel').style.display === 'block') { selectBLV(blvIdx); return; }
           return;
         case 'ArrowLeft': e.preventDefault();
           if (video) video.currentTime = Math.max(0, video.currentTime - 10);
