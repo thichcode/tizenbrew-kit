@@ -245,16 +245,34 @@
 
   function onCrawl() {
     if (polling) return;
+    polling = true; var btn = document.getElementById('btn-crawl'); if (btn) btn.disabled = true;
     setStatus('Dang quet lich...');
-    polling = true;
-    var btn = document.getElementById('btn-crawl'); if (btn) btn.disabled = true;
     request('POST', '/api/crawl', undefined, function (err, r) {
-      if (err) { polling = false; setStatus('Loi: ' + (err.message || err)); if (btn) btn.disabled = false; return; }
-      if (!r || !r.ok) { polling = false; setStatus('Loi crawl: ' + (r && r.error || 'unknown')); if (btn) btn.disabled = false; return; }
-      setStatus('Quet xong: ' + (r.count || '?') + ' tran');
-      polling = false; if (btn) btn.disabled = false;
-      loadMatches();
+      if (err) {
+        if (String(err.message || err).indexOf('409') !== -1) { setStatus('Dang quet roi, cho chut...'); pollCrawl(); }
+        else { setStatus('Loi: ' + (err.message || err)); polling = false; if (btn) btn.disabled = false; }
+        return;
+      }
+      pollCrawl();
     });
+  }
+  function pollCrawl() {
+    var tries = 0;
+    var iv = setInterval(function () {
+      request('GET', '/api/crawl-status', undefined, function (err2, s) {
+        if (err2) { clearInterval(iv); polling = false; var btn = document.getElementById('btn-crawl'); if (btn) btn.disabled = false; setStatus('Loi poll: ' + (err2.message || err2)); return; }
+        if (!s.crawling) {
+          clearInterval(iv);
+          polling = false; var btn = document.getElementById('btn-crawl'); if (btn) btn.disabled = false;
+          setStatus('Quet xong');
+          loadMatches();
+        } else {
+          tries++;
+          setStatus('Dang quet... ' + (tries * 3) + 's');
+        }
+        if (tries > 80) { clearInterval(iv); polling = false; var btn = document.getElementById('btn-crawl'); if (btn) btn.disabled = false; setStatus('Quet lau qua, thu lai'); }
+      });
+    }, 3000);
   }
 
   function loadMatches() {
