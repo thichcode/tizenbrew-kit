@@ -14,6 +14,7 @@
   var currentMatchIdx = -1;
   var blvIdx = 0;
   var blvLinks = [];
+  var blvHideTimer = null;
 
   var KEY_CODES = {
     13: 'Enter', 27: 'Escape', 32: ' ',
@@ -163,15 +164,17 @@
       })(i);
     }
     document.getElementById('blv-panel').style.display = 'block';
+    resetBLVTimer();
     var btns = document.getElementById('blv-panel').querySelectorAll('.blv-btn');
     if (btns.length) btns[0].focus();
   }
 
-  function hideBLVPanel() { document.getElementById('blv-panel').style.display = 'none'; }
+  function hideBLVPanel() { document.getElementById('blv-panel').style.display = 'none'; clearTimeout(blvHideTimer); }
+  function resetBLVTimer() { clearTimeout(blvHideTimer); blvHideTimer = setTimeout(function () { hideBLVPanel(); }, 10000); }
 
   function selectBLV(i) {
     if (i < 0 || i >= blvLinks.length) return;
-    blvIdx = i;
+    blvIdx = i; resetBLVTimer();
     var btns = document.querySelectorAll('.blv-btn');
     for (var j = 0; j < btns.length; j++) btns[j].className = 'blv-btn' + (j === i ? ' active' : '');
     if (btns[i]) btns[i].focus();
