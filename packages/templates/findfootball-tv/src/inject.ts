@@ -337,23 +337,25 @@
     if (key !== 'Backspace' && key !== 'Escape') backCount = 0;
 
     if (screen === 'player') {
+      var blvOpen = document.getElementById('blv-panel').style.display === 'block';
       switch (key) {
         case 'ArrowDown': e.preventDefault();
-          if (document.getElementById('blv-panel').style.display === 'block') {
-            highlightBLV(Math.min(blvIdx + 1, blvLinks.length - 1));
-          } else { showBLVPanel(currentMatchIdx); }
+          if (blvOpen) { highlightBLV(Math.min(blvIdx + 1, blvLinks.length - 1)); }
+          else { showBLVPanel(currentMatchIdx); }
           return;
         case 'ArrowUp': e.preventDefault();
-          if (document.getElementById('blv-panel').style.display === 'block') highlightBLV(Math.max(blvIdx - 1, 0));
-          return;
-        case 'Enter': e.preventDefault();
-          if (document.getElementById('blv-panel').style.display === 'block') { selectBLV(blvIdx); return; }
+          if (blvOpen) hideBLVPanel();
           return;
         case 'ArrowLeft': e.preventDefault();
-          if (video) video.currentTime = Math.max(0, video.currentTime - 10);
+          if (blvOpen) { highlightBLV(Math.max(blvIdx - 1, 0)); }
+          else { if (video) video.currentTime = Math.max(0, video.currentTime - 10); }
           return;
         case 'ArrowRight': e.preventDefault();
-          if (video) video.currentTime = video.duration ? Math.min(video.currentTime + 10, video.duration) : video.currentTime + 10;
+          if (blvOpen) { highlightBLV(Math.min(blvIdx + 1, blvLinks.length - 1)); }
+          else { if (video) video.currentTime = video.duration ? Math.min(video.currentTime + 10, video.duration) : video.currentTime + 10; }
+          return;
+        case 'Enter': e.preventDefault();
+          if (blvOpen) { selectBLV(blvIdx); return; }
           return;
         case ' ': case 'MediaPlayPause': case 'MediaPlay': case 'MediaPause': e.preventDefault();
           if (video) { if (video.paused) video.play().catch(function () {}); else video.pause(); }
