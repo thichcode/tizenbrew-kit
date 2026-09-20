@@ -214,12 +214,26 @@
 
   function playMatch(idx) {
     var m = displayMatches[idx]; if (!m) return;
-    var url = null;
-    for (var j = 0; j < (m.links || []).length; j++) {
-      if (m.links[j].streamUrl) { url = m.links[j].streamUrl; break; }
+    currentMatchIdx = idx; blvIdx = 0;
+    blvLinks = m.links || [];
+    var url = null, j0 = 0;
+    for (var j = 0; j < blvLinks.length; j++) {
+      if (blvLinks[j].streamUrl) { url = blvLinks[j].streamUrl; j0 = j; break; }
     }
-    if (url) { openPlayer(url); showBLVPanel(idx); return; }
+    if (url) { blvIdx = j0; openPlayer(url); showBLVPanel(idx); return; }
+    var first = blvLinks[0];
+    if (!first || !first.url) { showBLVPanel(idx); return; }
+    showLoading('Dang tim stream (' + first.label + ')...');
     showBLVPanel(idx);
+    var done = false;
+    var timer = setTimeout(function () {
+      if (!done) { done = true; hideLoading(); setStatus('Timeout - chon BLV khac'); }
+    }, 30000);
+    request('POST', '/api/sniff', { url: first.url }, function (err, r) {
+      if (done) return; done = true; clearTimeout(timer);
+      if (!err && r && r.streamUrl) { first.streamUrl = r.streamUrl; hideLoading(); openPlayer(r.streamUrl); return; }
+      hideLoading(); setStatus('Khong tim thay stream - chon BLV khac');
+    });
   }
 
   function openPlayer(url) {
