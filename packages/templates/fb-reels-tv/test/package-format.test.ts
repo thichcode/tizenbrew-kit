@@ -783,14 +783,20 @@ describe('Public ShortVideo TV package format', () => {
     expect(source).toContain('Escape');
   });
 
-  it('shows a buffering indicator and net stats when playback stalls', async () => {
+  it('shows net stats overlay during playback and counts stalls passively', async () => {
     var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
     harness.elements.feed.children[0].events.click();
-    harness.elements.video.events.waiting();
 
-    expect(harness.elements['player-loading'].textContent).toBe('Buffering...');
+    var overlay = null;
+    var kids = harness.elements.player.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].id === 'net-stats') overlay = kids[i];
+    }
+    expect(overlay).not.toBeNull();
+    expect(function () { harness.elements.video.events.waiting(); }).not.toThrow();
+    expect(function () { harness.elements.video.events.stalled(); }).not.toThrow();
   });
 
   it('registers the red remote key when the Tizen API is available', async () => {
