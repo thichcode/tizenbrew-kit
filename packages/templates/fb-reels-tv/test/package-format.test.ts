@@ -167,6 +167,12 @@ function createInjectHarness(playResults, options) {
           json: function () { return Promise.resolve(resolveData); },
         });
       }
+      if (String(url).indexOf('/suggestions') !== -1) {
+        return Promise.resolve({
+          ok: true,
+          json: function () { return Promise.resolve({ items: [] }); },
+        });
+      }
       if (options && options.feedResponses) {
         return options.feedResponses[feedResponseIndex++].promise;
       }
@@ -245,7 +251,7 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.1.1');
+    expect(pkg.version).toBe('1.2.7');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
@@ -312,18 +318,18 @@ describe('Public ShortVideo TV package format', () => {
     expect(source).toContain('Cannot play:');
   });
 
-  it('routes all server fallback URLs through the public Nginx port', () => {
+  it('routes all server fallback URLs through the public resolver origin', () => {
     var source = readFileSync(resolve(root, 'src/inject.ts'), 'utf8');
     var testSource = readFileSync(fileURLToPath(import.meta.url), 'utf8');
-    var publicOrigin = 'http://84.8.220.24:' + '8000';
-    var bareOrigin = 'http://84.8.220.24';
+    var publicOrigin = 'https://find-football-tizenbrew.onrender.com';
+    var retiredOrigin = 'http://84.8.220.' + '24';
 
     expect(source).toContain(publicOrigin);
     expect(testSource).toContain(publicOrigin);
-    expect(source).not.toContain(bareOrigin + '/play');
-    expect(source).not.toContain(bareOrigin + '/resolve');
-    expect(testSource).not.toContain(bareOrigin + '/play');
-    expect(testSource).not.toContain(bareOrigin + '/resolve');
+    expect(source).not.toContain('http://127.0.0.1');
+    expect(source).not.toContain('http://localhost');
+    expect(source).not.toContain(retiredOrigin);
+    expect(testSource).not.toContain(retiredOrigin);
   });
 
   it('plays pre-resolved Facebook URLs through direct, redirect, and proxy stages', async () => {
@@ -335,10 +341,10 @@ describe('Public ShortVideo TV package format', () => {
     expect(function () { harness.elements.feed.children[0].events.click(); }).not.toThrow();
     expect(harness.assignedSources[0]).toBe('https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4');
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.assignedSources[1]).toBe('http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources[1]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
     expect(harness.elements['player-loading'].textContent).toBe('Refreshing video URL...');
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.assignedSources[2]).toBe('http://84.8.220.24:8000/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources[2]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
     expect(harness.elements['player-loading'].textContent).toBe('Retrying via proxy...');
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
     expect(harness.assignedSources).toHaveLength(3);
@@ -372,14 +378,14 @@ describe('Public ShortVideo TV package format', () => {
     await flushPromises();
 
     expect(harness.fetchCalls.some(function (url) {
-      return url === 'http://84.8.220.24:8000/resolve?url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456';
+      return url === 'https://find-football-tizenbrew.onrender.com/resolve?url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456';
     })).toBe(true);
     expect(harness.assignedSources[0]).toBe(resolvedUrl);
     expect(harness.assignedSources[0]).not.toContain('/play?');
     harness.elements.video.events.error();
-    expect(harness.assignedSources[1]).toBe('http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources[1]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456&api_key=299145bbcefca5e3dd0f193dc6d187b0');
     harness.elements.video.events.error();
-    expect(harness.assignedSources[2]).toBe('http://84.8.220.24:8000/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources[2]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456&api_key=299145bbcefca5e3dd0f193dc6d187b0');
   });
 
   it('does not assume video error fallback playback returns a Promise', async () => {
@@ -390,7 +396,7 @@ describe('Public ShortVideo TV package format', () => {
 
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.elements.video.src).toBe('http://84.8.220.24:8000/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.elements.video.src).toBe('https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
     expect(harness.fetchCalls.some(function (url) { return url.indexOf('/resolve?') !== -1; })).toBe(false);
   });
 
@@ -403,8 +409,8 @@ describe('Public ShortVideo TV package format', () => {
     harness.runTimers();
     expect(harness.assignedSources).toEqual([
       'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4',
-      'http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
-      'http://84.8.220.24:8000/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
     expect(harness.elements.error.textContent).toBe('Cannot play: direct playback failed');
     expect(harness.elements['player-loading'].style.display).toBe('block');
@@ -424,7 +430,7 @@ describe('Public ShortVideo TV package format', () => {
 
     expect(harness.assignedSources).toEqual([
       'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4',
-      'http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
   });
 
@@ -440,7 +446,7 @@ describe('Public ShortVideo TV package format', () => {
 
     expect(harness.assignedSources).toEqual([
       'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4',
-      'http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
   });
 
@@ -472,7 +478,7 @@ describe('Public ShortVideo TV package format', () => {
     expect(harness.assignedSources).toEqual([firstVideoUrl, secondVideoUrl]);
 
     harness.elements.video.events.error();
-    expect(harness.assignedSources[2]).toBe('http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Fsecond&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources[2]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Fsecond&api_key=299145bbcefca5e3dd0f193dc6d187b0');
   });
 
   it('resets Facebook fallback stages when a different item opens', async () => {
@@ -503,10 +509,10 @@ describe('Public ShortVideo TV package format', () => {
 
     expect(harness.assignedSources).toEqual([
       firstVideoUrl,
-      'http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Ffirst&api_key=299145bbcefca5e3dd0f193dc6d187b0',
-      'http://84.8.220.24:8000/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Ffirst&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Ffirst&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Ffirst&api_key=299145bbcefca5e3dd0f193dc6d187b0',
       secondVideoUrl,
-      'http://84.8.220.24:8000/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Fsecond&api_key=299145bbcefca5e3dd0f193dc6d187b0',
+      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Fsecond&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
   });
 
