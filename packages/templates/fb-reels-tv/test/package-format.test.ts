@@ -783,6 +783,16 @@ describe('Public ShortVideo TV package format', () => {
     expect(source).toContain('Escape');
   });
 
+  it('shows a buffering indicator and net stats when playback stalls', async () => {
+    var harness = createInjectHarness([undefined]);
+
+    await loadHarnessFeed(harness);
+    harness.elements.feed.children[0].events.click();
+    harness.elements.video.events.waiting();
+
+    expect(harness.elements['player-loading'].textContent).toBe('Buffering...');
+  });
+
   it('registers the red remote key when the Tizen API is available', async () => {
     var harness = createInjectHarness([undefined]);
 

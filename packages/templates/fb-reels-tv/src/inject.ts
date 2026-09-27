@@ -403,6 +403,7 @@
     isPlayerOpen = false;
     currentItem = null;
     stallRecoveries = 0;
+    stopNetStats();
     if (stallTimer) {
       clearTimeout(stallTimer);
       stallTimer = null;
@@ -438,8 +439,13 @@
   var currentItem = null;
   var stallTimer = null;
   var stallRecoveries = 0;
-  var STALL_RECOVER_MS = 10000;
+  var STALL_RECOVER_MS = 20000;
   var STALL_MAX_RECOVERIES = 3;
+  var netStatsEl = null;
+  var netStatsTimer = null;
+  var lastBufEnd = -1;
+  var lastBufTs = 0;
+  var intakeEma = 0;
 
   function handleMediaAttemptFailure(item, requestId, attemptId, error) {
     if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId) return;
@@ -559,8 +565,89 @@
     return true;
   }
 
+  function ensureNetStats() {
+    if (netStatsEl || !playerEl) return;
+    try {
+      netStatsEl = document.createElement('div');
+      netStatsEl.setAttribute('id', 'net-stats');
+      var style = netStatsEl.style;
+      style.position = 'absolute';
+      style.left = '12px';
+      style.bottom = '76px';
+      style.background = 'rgba(0,0,0,0.65)';
+      style.color = '#4caf50';
+      style.fontSize = '12px';
+      style.fontFamily = 'monospace';
+      style.padding = '6px 10px';
+      style.borderRadius = '6px';
+      style.zIndex = '30';
+      style.pointerEvents = 'none';
+      netStatsEl.textContent = '...';
+      playerEl.appendChild(netStatsEl);
+    } catch (_) {
+      netStatsEl = null;
+    }
+  }
+
+  function updateNetStats() {
+    if (!isPlayerOpen || !video || !netStatsEl) return;
+    try {
+      var now = Date.now();
+      var cur = video.currentTime || 0;
+      var bufEnd = cur;
+      if (video.buffered && video.buffered.length) {
+        bufEnd = video.buffered.end(video.buffered.length - 1);
+      }
+      var ahead = Math.max(0, bufEnd - cur);
+      if (lastBufTs > 0) {
+        var dt = (now - lastBufTs) / 1000;
+        if (dt > 0) {
+          var rate = (bufEnd - lastBufEnd) / dt;
+          if (rate >= 0 && rate < 10) {
+            intakeEma = intakeEma === 0 ? rate : intakeEma * 0.7 + rate * 0.3;
+          }
+        }
+      }
+      lastBufEnd = bufEnd;
+      lastBufTs = now;
+      var color = intakeEma >= 1 ? '#4caf50' : (intakeEma >= 0.3 ? '#f0ad4e' : '#e94560');
+      var res = (video.videoWidth || 0) + 'x' + (video.videoHeight || 0);
+      netStatsEl.style.color = color;
+      netStatsEl.textContent = 'BUF ' + ahead.toFixed(1) + 's | IN ' + intakeEma.toFixed(2) + 'x | ' + res + ' | stall ' + stallRecoveries;
+    } catch (_) {}
+  }
+
+  function startNetStats() {
+    ensureNetStats();
+    lastBufEnd = -1;
+    lastBufTs = 0;
+    intakeEma = 0;
+    if (netStatsTimer) {
+      try { clearInterval(netStatsTimer); } catch (_) {}
+    }
+    try {
+      netStatsTimer = setInterval(updateNetStats, 1000);
+    } catch (_) {
+      netStatsTimer = null;
+    }
+  }
+
+  function stopNetStats() {
+    if (netStatsTimer) {
+      try { clearInterval(netStatsTimer); } catch (_) {}
+      netStatsTimer = null;
+    }
+    if (netStatsEl) {
+      try {
+        if (netStatsEl.parentNode) netStatsEl.parentNode.removeChild(netStatsEl);
+      } catch (_) {}
+      netStatsEl = null;
+    }
+  }
+
   function armStallWatchdog() {
     if (!isPlayerOpen) return;
+    stallRecoveries += 1;
     if (playerLoadingEl) {
       playerLoadingEl.style.display = 'block';
       playerLoadingEl.style.color = '#888';
@@ -582,7 +669,6 @@
       }
       return;
     }
-    stallRecoveries += 1;
     var resumeAt = video.currentTime || 0;
     var requestId = playRequestId;
     if (playerLoadingEl) {
@@ -596,6 +682,7 @@
     }
     resolveItem(item, function (resolved) {
       if (!isPlayerOpen || requestId !== playRequestId) return;
+      if (video.paused || video.readyState > 2) return;
       var freshUrl = (resolved && resolved.videoUrl) || (item && item._redirectUrl);
       if (!freshUrl) return;
       if ((resolved.source === 'Facebook' || resolved.source === 'Bilibili') && resolved.videoUrl === resolved._redirectUrl) sourceFallbackStage = 1;
@@ -619,6 +706,7 @@
     sourceFallbackStage = 0;
     currentItem = item;
     stallRecoveries = 0;
+    startNetStats();
     if (stallTimer) {
       clearTimeout(stallTimer);
       stallTimer = null;
