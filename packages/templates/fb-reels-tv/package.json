@@ -1,6 +1,6 @@
 {
   "name": "shortvideo-tv",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "Public short-video feed player for TizenBrew on Samsung Tizen 3",
   "type": "module",
   "packageType": "app",
@@ -18,7 +18,7 @@
   },
   "scripts": {
     "dev": "tizenbrew-kit dev",
-    "build": "npx esbuild src/inject.ts --bundle --minify --target=es2015 --outfile=dist/inject.js",
+    "build": "npx esbuild src/inject.ts --bundle --minify --target=es2015 --outfile=dist/inject.js && npx esbuild src/inject.ts --bundle --target=es2015 --outfile=dist/inject.global.js",
     "package": "tizenbrew-kit package",
     "doctor": "tizenbrew-kit doctor",
     "pretest": "npx esbuild src/inject.ts --bundle --minify --target=es2015 --outfile=dist/inject.js",

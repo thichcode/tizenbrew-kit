@@ -251,7 +251,7 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.2.10');
+    expect(pkg.version).toBe('1.2.11');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
@@ -264,7 +264,8 @@ describe('Public ShortVideo TV package format', () => {
     var bundleCommand = 'npx esbuild src/inject.ts --bundle --minify --target=es2015 --outfile=dist/inject.js';
 
     expect(pkg.scripts.pretest).toBe(bundleCommand);
-    expect(pkg.scripts.build).toBe(bundleCommand);
+    expect(pkg.scripts.build).toContain('--outfile=dist/inject.js');
+    expect(pkg.scripts.build).toContain('--outfile=dist/inject.global.js');
     expect(pkg.scripts.test).toBe('vitest run test/package-format.test.ts');
   });
 
