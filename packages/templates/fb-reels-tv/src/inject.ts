@@ -595,16 +595,23 @@
         if (dt > 0) {
           var rate = (bufEnd - lastBufEnd) / dt;
           if (rate >= 0 && rate < 10) {
-            intakeEma = intakeEma === 0 ? rate : intakeEma * 0.7 + rate * 0.3;
+            intakeEma = intakeEma < 0 ? rate : intakeEma * 0.7 + rate * 0.3;
           }
         }
       }
       lastBufEnd = bufEnd;
       lastBufTs = now;
-      var color = intakeEma >= 1 ? '#4caf50' : (intakeEma >= 0.3 ? '#f0ad4e' : '#e94560');
+      var dur = video.duration || 0;
+      var full = isFinite(dur) && dur > 0 && bufEnd >= dur - 0.5;
+      var bufText = full ? 'FULL' : (ahead > 999 ? '>999s' : ahead.toFixed(1) + 's');
+      var inText = full ? '--' : (intakeEma < 0 ? '--' : intakeEma.toFixed(2) + 'x');
+      var color = '#888';
+      if (full || intakeEma >= 1) color = '#4caf50';
+      else if (intakeEma >= 0.3) color = '#f0ad4e';
+      else if (intakeEma >= 0) color = '#e94560';
       var res = (video.videoWidth || 0) + 'x' + (video.videoHeight || 0);
       netStatsEl.style.color = color;
-      netStatsEl.textContent = 'BUF ' + ahead.toFixed(1) + 's | IN ' + intakeEma.toFixed(2) + 'x | ' + res + ' | stall ' + stallCount;
+      netStatsEl.textContent = 'BUF ' + bufText + ' | IN ' + inText + ' | ' + res + ' | stall ' + stallCount;
     } catch (_) {}
   }
 
@@ -612,7 +619,7 @@
     ensureNetStats();
     lastBufEnd = -1;
     lastBufTs = 0;
-    intakeEma = 0;
+    intakeEma = -1;
     if (netStatsTimer) {
       try { clearInterval(netStatsTimer); } catch (_) {}
     }
