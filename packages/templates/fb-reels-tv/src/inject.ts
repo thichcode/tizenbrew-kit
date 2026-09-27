@@ -401,6 +401,12 @@
 
   function closePlayer() {
     isPlayerOpen = false;
+    currentItem = null;
+    stallRecoveries = 0;
+    if (stallTimer) {
+      clearTimeout(stallTimer);
+      stallTimer = null;
+    }
     playRequestId += 1;
     mediaAttemptId += 1;
     mediaFailureScheduleId += 1;
@@ -429,6 +435,11 @@
   }
 
   var sourceFallbackStage = 0;
+  var currentItem = null;
+  var stallTimer = null;
+  var stallRecoveries = 0;
+  var STALL_RECOVER_MS = 10000;
+  var STALL_MAX_RECOVERIES = 3;
 
   function handleMediaAttemptFailure(item, requestId, attemptId, error) {
     if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId) return;
@@ -454,7 +465,7 @@
       return;
     }
 
-    if (tryNextFacebookFallback(item, requestId)) return;
+    if (tryNextFallback(item, requestId)) return;
     var code = error.code || 0;
     var msg = 'Unknown error';
     if (code === 1) msg = 'Video load aborted';
@@ -548,11 +559,70 @@
     return true;
   }
 
+  function armStallWatchdog() {
+    if (!isPlayerOpen) return;
+    if (playerLoadingEl) {
+      playerLoadingEl.style.display = 'block';
+      playerLoadingEl.style.color = '#888';
+      playerLoadingEl.textContent = 'Buffering...';
+    }
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(recoverStalledPlayback, STALL_RECOVER_MS);
+  }
+
+  function recoverStalledPlayback() {
+    stallTimer = null;
+    if (!isPlayerOpen || !video || !currentItem) return;
+    if (video.paused || video.readyState > 2) return;
+    if (stallRecoveries >= STALL_MAX_RECOVERIES) {
+      if (playerLoadingEl) {
+        playerLoadingEl.style.display = 'block';
+        playerLoadingEl.style.color = '#e94560';
+        playerLoadingEl.textContent = 'Network too slow — press OK to retry';
+      }
+      return;
+    }
+    stallRecoveries += 1;
+    var resumeAt = video.currentTime || 0;
+    var requestId = playRequestId;
+    if (playerLoadingEl) {
+      playerLoadingEl.style.display = 'block';
+      playerLoadingEl.style.color = '#888';
+      playerLoadingEl.textContent = 'Reconnecting...';
+    }
+    var item = currentItem;
+    if (item.source === 'Facebook' && item.sourceUrl) {
+      item.videoUrl = item.sourceUrl;
+    }
+    resolveItem(item, function (resolved) {
+      if (!isPlayerOpen || requestId !== playRequestId) return;
+      var freshUrl = (resolved && resolved.videoUrl) || (item && item._redirectUrl);
+      if (!freshUrl) return;
+      if ((resolved.source === 'Facebook' || resolved.source === 'Bilibili') && resolved.videoUrl === resolved._redirectUrl) sourceFallbackStage = 1;
+      startMediaAttempt(resolved, requestId, freshUrl, false);
+      var onMeta = function () {
+        video.removeEventListener('loadedmetadata', onMeta);
+        try {
+          if (isFinite(resumeAt) && resumeAt > 0) video.currentTime = resumeAt;
+        } catch (_) {}
+        var result = video.play();
+        if (result && result.catch) result.catch(function () {});
+      };
+      video.addEventListener('loadedmetadata', onMeta);
+    });
+  }
+
   function playItem(item) {
     clearError();
     isPlayerOpen = true;
     var requestId = ++playRequestId;
     sourceFallbackStage = 0;
+    currentItem = item;
+    stallRecoveries = 0;
+    if (stallTimer) {
+      clearTimeout(stallTimer);
+      stallTimer = null;
+    }
     if (playerEl) playerEl.classList.add('active');
     if (playerLoadingEl) {
       playerLoadingEl.style.display = 'block';
@@ -771,8 +841,14 @@
   if (video) {
     video.addEventListener('playing', function () {
       clearTimeout(loadTimeout);
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
       if (playerLoadingEl) playerLoadingEl.style.display = 'none';
     });
+    video.addEventListener('waiting', armStallWatchdog);
+    video.addEventListener('stalled', armStallWatchdog);
     video.addEventListener('ended', function () {
       moveSelection(1);
       var item = selectedItem();
