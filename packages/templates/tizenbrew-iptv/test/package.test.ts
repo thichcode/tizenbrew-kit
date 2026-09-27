@@ -53,4 +53,20 @@ describe('tizenbrew-iptv package', () => {
     expect(inject).toContain('Change playlist');
     expect(inject).toContain('menu-item');
   });
+
+  it('debounces Up/Down 10s: preview first, Enter plays immediately', () => {
+    const inject = readFileSync(resolve(root, 'dist/inject.js'), 'utf8');
+
+    // hằng số + timer tồn tại
+    expect(inject).toContain('ZAP_DELAY');
+    expect(inject).toContain('zapTimer');
+    expect(inject).toContain('10000');
+    // Up/Down dùng clearTimeout + setTimeout, không gọi y( play ) đồng bộ trong L
+    expect(inject).toMatch(/clearTimeout\(zapTimer\)/);
+    expect(inject).toMatch(/zapTimer\s*=\s*setTimeout/);
+    // Enter hủy timer
+    expect(inject).toMatch(/clearTimeout\(zapTimer\)[\s\S]{0,200}y\(p\)/);
+    // vẫn giữ ES5
+    expect(inject).not.toMatch(/\bconst\b|\blet\b|=>/);
+  });
 });
