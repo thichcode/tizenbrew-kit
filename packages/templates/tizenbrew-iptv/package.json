@@ -1,6 +1,6 @@
 {
   "name": "tizenbrew-iptv",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "IPTV Player for TizenBrew with QR playlist setup",
   "license": "MIT",
   "private": false,
