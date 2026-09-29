@@ -16,6 +16,10 @@
   var blvLinks = [];
   var blvHideTimer = null;
   var displayMatches = [];
+  var playToken = 0;
+  var playOk = false;
+  var triedIdx = {};
+  var playSession = false;
 
   var KEY_CODES = {
     13: 'Enter', 27: 'Escape', 32: ' ',
@@ -124,6 +128,8 @@
     statusEl = document.getElementById('st');
     listEl = document.getElementById('list');
     video = document.getElementById('player');
+    video.addEventListener('playing', function () { playOk = true; });
+    video.addEventListener('error', function () { autoNextBLV('Loi phat - tu chuyen BLV ke...'); });
     document.getElementById('btn-crawl').addEventListener('click', onCrawl);
     document.getElementById('btn-crawl2').addEventListener('click', onCrawl);
     document.getElementById('btn-back-play').addEventListener('click', stopPlayer);
@@ -196,48 +202,64 @@
 
   function selectBLV(i) {
     if (i < 0 || i >= blvLinks.length) return;
-    highlightBLV(i);
+    highlightBLV(i); triedIdx[i] = 1;
     var link = blvLinks[i];
     if (link.streamUrl) { openPlayer(link.streamUrl); hideBLVPanel(); return; }
     if (!link.url) return;
     showLoading('Dang tim stream (' + link.label + ')...');
     var done = false;
     var timer = setTimeout(function () {
-      if (!done) { done = true; hideLoading(); setStatus('Timeout - chon BLV khac'); }
+      if (!done) { done = true; hideLoading(); autoNextBLV('Sniff lau - tu chuyen BLV ke...'); }
     }, 30000);
     request('POST', '/api/sniff', { url: link.url }, function (err, r) {
       if (done) return; done = true; clearTimeout(timer);
-      if (!err && r && r.streamUrl) { hideLoading(); openPlayer(r.streamUrl); hideBLVPanel(); return; }
-      hideLoading(); setStatus('Khong tim thay stream - chon BLV khac');
+      if (!err && r && r.streamUrl) { link.streamUrl = r.streamUrl; hideLoading(); openPlayer(r.streamUrl); hideBLVPanel(); return; }
+      hideLoading(); autoNextBLV('Khong co stream - tu chuyen BLV ke...');
     });
+  }
+
+  function autoNextBLV(msg) {
+    if (!playSession) return;
+    setStatus(msg);
+    var next = -1;
+    for (var k = 1; k <= blvLinks.length; k++) {
+      var c = (blvIdx + k) % blvLinks.length;
+      if (!triedIdx[c]) { next = c; break; }
+    }
+    if (next === -1) { setStatus('Da thu het BLV - chon tay'); return; }
+    selectBLV(next);
   }
 
   function playMatch(idx) {
     var m = displayMatches[idx]; if (!m) return;
     currentMatchIdx = idx; blvIdx = 0;
     blvLinks = m.links || [];
+    triedIdx = {}; playToken++; playSession = true;
     var url = null, j0 = 0;
     for (var j = 0; j < blvLinks.length; j++) {
       if (blvLinks[j].streamUrl) { url = blvLinks[j].streamUrl; j0 = j; break; }
     }
-    if (url) { blvIdx = j0; openPlayer(url); showBLVPanel(idx); return; }
+    if (url) { blvIdx = j0; triedIdx[j0] = 1; openPlayer(url); showBLVPanel(idx); return; }
     var first = blvLinks[0];
     if (!first || !first.url) { showBLVPanel(idx); return; }
     showLoading('Dang tim stream (' + first.label + ')...');
     showBLVPanel(idx);
+    triedIdx[0] = 1;
     var done = false;
     var timer = setTimeout(function () {
-      if (!done) { done = true; hideLoading(); setStatus('Timeout - chon BLV khac'); }
+      if (!done) { done = true; hideLoading(); autoNextBLV('Sniff lau - tu chuyen BLV ke...'); }
     }, 30000);
     request('POST', '/api/sniff', { url: first.url }, function (err, r) {
       if (done) return; done = true; clearTimeout(timer);
       if (!err && r && r.streamUrl) { first.streamUrl = r.streamUrl; hideLoading(); openPlayer(r.streamUrl); return; }
-      hideLoading(); setStatus('Khong tim thay stream - chon BLV khac');
+      hideLoading(); autoNextBLV('Khong co stream - tu chuyen BLV ke...');
     });
   }
 
   function openPlayer(url) {
     screen = 'player';
+    playOk = false;
+    var token = ++playToken;
     var v = document.getElementById('player'); v.style.display = 'block';
     var listScreen = document.getElementById('list'); if (listScreen) listScreen.style.display = 'none';
     var hdr = document.querySelector('.list-header'); if (hdr) hdr.style.display = 'none';
@@ -248,12 +270,25 @@
       hls.loadSource(url);
       hls.attachMedia(v);
       hls.on(Hls.Events.MANIFEST_PARSED, function () { v.play().catch(function () {}); });
+      hls.on(Hls.Events.ERROR, function (ev, data) {
+        if (token !== playToken) return;
+        if (data && data.fatal) autoNextBLV('Loi stream - tu chuyen BLV ke...');
+      });
     } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
       v.src = url; v.play().catch(function () {});
     }
+    setTimeout(function () {
+      if (token !== playToken) return;
+      if (playOk) return;
+      try {
+        if (v && !v.paused && !v.ended && v.currentTime > 0) return;
+      } catch (e) {}
+      autoNextBLV('Khong xem duoc sau 20s - tu chuyen BLV ke...');
+    }, 20000);
   }
 
   function stopPlayer() {
+    playToken++; playSession = false;
     if (hls) { hls.destroy(); hls = null; }
     var v = document.getElementById('player');
     if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {} v.style.display = 'none'; }
