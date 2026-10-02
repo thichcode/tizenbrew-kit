@@ -104,7 +104,7 @@ class FacebookFormatTests(unittest.TestCase):
         self.assertEqual(result.resolved.videoUrl, CDN_URL)
         run.assert_called_once_with(
             FACEBOOK_URL,
-            ["-f", "hd/sd/b", "--no-check-certificates", "--user-agent", app.UA],
+            ["-f", app.FACEBOOK_FORMAT, "--no-check-certificates", "--user-agent", app.UA],
         )
 
     def test_resolve_rejects_unsupported_sources_before_yt_dlp(self):
