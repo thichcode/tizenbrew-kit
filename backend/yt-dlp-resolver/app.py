@@ -42,7 +42,9 @@ app.add_middleware(
 
 API_KEY = os.environ.get("API_KEY", "")
 YT_DLP = os.environ.get("YT_DLP_PATH", "yt-dlp")
-FACEBOOK_FORMAT = "hd/sd/b"
+# Tizen TVs (2017-2020) decode H.264 only: Facebook "hd" is often AV1 which
+# fails with MEDIA_ERR_DECODE on TV. Prefer progressive AVC1, fall back to sd.
+FACEBOOK_FORMAT = "best[acodec!=none][vcodec^=avc1][ext=mp4]/sd/b"
 SOURCE_HOST_SUFFIXES = ("facebook.com", "fb.watch", "tiktok.com", "bilibili.tv", "youtube.com", "youtu.be")
 TIKTOK_CDN_HOST_SUFFIXES = ("tiktok.com", "tiktokcdn.com", "tiktokv.com", "byteoversea.com")
 YOUTUBE_CDN_HOST_SUFFIXES = ("googlevideo.com", "youtube.com")
