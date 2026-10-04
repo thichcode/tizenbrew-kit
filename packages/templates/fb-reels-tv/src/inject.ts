@@ -559,6 +559,7 @@
     return true;
   }
 
+  var APP_VERSION = '1.2.13';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -611,6 +612,7 @@
     if (!isPlayerOpen || requestId !== playRequestId) return;
     avStopTick();
     avCloseQuiet();
+    if (useAv) avSupport = 'fail';
     useAv = false;
     if (video) { try { video.style.display = ''; } catch (_) {} }
     if (playerLoadingEl) {
@@ -623,7 +625,15 @@
 
   function avStart(item, requestId, sourceUrl) {
     var api = avApi();
-    if (!api || !avEnsureObject()) return false;
+    if (!api) {
+      avSupport = 'no';
+      return false;
+    }
+    if (!avEnsureObject()) {
+      avSupport = 'fail';
+      return false;
+    }
+    avSupport = 'yes';
     try {
       avCloseQuiet();
       var w = 1920;
@@ -688,6 +698,7 @@
       }, 15000);
       return true;
     } catch (_) {
+      avSupport = 'fail';
       try { avCloseQuiet(); } catch (_) {}
       return false;
     }
@@ -739,14 +750,24 @@
     }
   }
 
+  var avSupport = 'unknown';
+
+  function avSupportLabel() {
+    if (avSupport === 'yes') return 'AVPLAY-OK';
+    if (avSupport === 'no') return 'AVPLAY-NONE';
+    if (avSupport === 'fail') return 'AVPLAY-FAIL';
+    return 'AVPLAY-?';
+  }
+
   function updateNetStats() {
     if (!isPlayerOpen || !netStatsEl) return;
+    var tag = 'v' + APP_VERSION + ' ' + avSupportLabel();
     if (useAv) {
       try {
         var c = avCurSec || 0;
         var d = avDurSec || 0;
         netStatsEl.style.color = '#4caf50';
-        netStatsEl.textContent = 'AVPLAY | T ' + c.toFixed(1) + 's/' + (d ? d.toFixed(1) + 's' : '?') + ' | stall ' + stallCount;
+        netStatsEl.textContent = tag + ' | T ' + c.toFixed(1) + 's/' + (d ? d.toFixed(1) + 's' : '?') + ' | stall ' + stallCount;
       } catch (_) {}
       return;
     }
@@ -780,7 +801,7 @@
       else if (intakeEma >= 0) color = '#e94560';
       var res = (video.videoWidth || 0) + 'x' + (video.videoHeight || 0);
       netStatsEl.style.color = color;
-      netStatsEl.textContent = 'BUF ' + bufText + ' | IN ' + inText + ' | ' + res + ' | stall ' + stallCount;
+      netStatsEl.textContent = tag + ' | BUF ' + bufText + ' | IN ' + inText + ' | ' + res + ' | stall ' + stallCount;
     } catch (_) {}
   }
 

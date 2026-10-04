@@ -251,7 +251,7 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.2.12');
+    expect(pkg.version).toBe('1.2.13');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
