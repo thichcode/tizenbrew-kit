@@ -855,7 +855,7 @@
       if (netStatsEl) netStatsEl.style.display = 'block';
     }
     if (playerTitleEl) {
-      playerTitleEl.textContent = netStatsOff ? 'stats OFF (press 1 to show)' : 'stats ON (press 1 to hide)';
+      playerTitleEl.textContent = netStatsOff ? 'stats OFF (green to show)' : 'stats ON (green to hide)';
     }
     if (playerLoadingEl) playerLoadingEl.style.display = 'none';
   }
@@ -1000,8 +1000,8 @@
     38: 'ArrowUp',
     39: 'ArrowRight',
     40: 'ArrowDown',
-    49: '1',
     403: 'Red',
+    404: 'Green',
     10009: 'Escape',
     10190: 'MediaPlayPause',
     10252: 'MediaPlayPause',
@@ -1036,7 +1036,7 @@
         seekVideo(10);
         return;
       }
-      if (key === '1') {
+      if (key === 'Green') {
         event.preventDefault();
         toggleNetStats();
         return;
@@ -1060,6 +1060,11 @@
       event.preventDefault();
       var item = selectedItem();
       if (item) playItem(item);
+    }
+
+    if (key === 'Green') {
+      event.preventDefault();
+      toggleNetStats();
     }
 
     if (key === 'Red') {
@@ -1132,6 +1137,7 @@
     try {
       if (window.tizen && window.tizen.tvinputdevice && window.tizen.tvinputdevice.registerKey) {
         window.tizen.tvinputdevice.registerKey('ColorF0Red');
+        window.tizen.tvinputdevice.registerKey('ColorF0Green');
       }
     } catch (_) {}
   }

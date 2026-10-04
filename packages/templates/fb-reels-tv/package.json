@@ -7,7 +7,8 @@
   "appName": "ShortVideo TV",
   "appPath": "index.html",
   "keys": [
-    "ColorF0Red"
+    "ColorF0Red",
+    "ColorF0Green"
   ],
   "files": [
     "index.html",
