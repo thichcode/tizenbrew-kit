@@ -101,9 +101,7 @@ function createInjectHarness(playResults, options) {
   };
 
   elements.video.error = { code: 4 };
-  elements.video.load = function () {
-    if ((!options || options.autoLoadStart !== false) && this.events.loadstart) this.events.loadstart();
-  };
+  elements.video.load = function () {};
   elements.video.pause = function () {};
   elements.video.removeAttribute = function (name) { if (name === 'src') this._src = ''; };
   elements.video.playCalls = 0;
@@ -120,6 +118,8 @@ function createInjectHarness(playResults, options) {
     set: function (value) {
       this._src = value;
       assignedSources.push(value);
+      // Per spec, assigning src runs resource selection, which emits loadstart.
+      if ((!options || options.autoLoadStart !== false) && this.events.loadstart) this.events.loadstart();
     },
   });
   Object.defineProperty(elements.video, 'currentSrc', {
