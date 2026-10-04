@@ -805,19 +805,54 @@
     } catch (_) {}
   }
 
+  var NETSTATS_LS_KEY = 'shortvideo_netstats_off';
+  var netStatsOff = false;
+  try {
+    netStatsOff = localStorage.getItem(NETSTATS_LS_KEY) === '1';
+  } catch (_) {
+    netStatsOff = false;
+  }
+
   function startNetStats() {
-    ensureNetStats();
     lastBufEnd = -1;
     lastBufTs = 0;
     intakeEma = -1;
     if (netStatsTimer) {
       try { clearInterval(netStatsTimer); } catch (_) {}
+      netStatsTimer = null;
     }
+    if (netStatsOff) {
+      if (netStatsEl) netStatsEl.style.display = 'none';
+      return;
+    }
+    ensureNetStats();
+    if (netStatsEl) netStatsEl.style.display = 'block';
     try {
       netStatsTimer = setInterval(updateNetStats, 1000);
     } catch (_) {
       netStatsTimer = null;
     }
+  }
+
+  function toggleNetStats() {
+    netStatsOff = !netStatsOff;
+    try {
+      localStorage.setItem(NETSTATS_LS_KEY, netStatsOff ? '1' : '0');
+    } catch (_) {}
+    if (netStatsOff) {
+      if (netStatsTimer) {
+        try { clearInterval(netStatsTimer); } catch (_) {}
+        netStatsTimer = null;
+      }
+      if (netStatsEl) netStatsEl.style.display = 'none';
+    } else {
+      startNetStats();
+      if (netStatsEl) netStatsEl.style.display = 'block';
+    }
+    if (playerTitleEl) {
+      playerTitleEl.textContent = netStatsOff ? 'stats OFF (press 1 to show)' : 'stats ON (press 1 to hide)';
+    }
+    if (playerLoadingEl) playerLoadingEl.style.display = 'none';
   }
 
   function stopNetStats() {
@@ -960,6 +995,7 @@
     38: 'ArrowUp',
     39: 'ArrowRight',
     40: 'ArrowDown',
+    49: '1',
     403: 'Red',
     10009: 'Escape',
     10190: 'MediaPlayPause',
@@ -993,6 +1029,11 @@
       if (key === 'ArrowRight') {
         event.preventDefault();
         seekVideo(10);
+        return;
+      }
+      if (key === '1') {
+        event.preventDefault();
+        toggleNetStats();
         return;
       }
       return;

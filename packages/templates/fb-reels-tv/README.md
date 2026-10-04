@@ -19,6 +19,9 @@ Tizen 3 TVs run an old WebKit browser that can't handle modern Facebook pages. I
 | OK / Enter | Play (in feed) / Pause-Resume (in player) |
 | ◁ Back | Close player, return to feed |
 | 🔴 Red button | Clear entire feed |
+| 1 | Toggle the net-stats overlay (also stops the 1 Hz `video.buffered` poll) |
+
+The overlay poll is persisted in `localStorage`, so once you press 1 it stays off across restarts until pressed again. Old Tizen WebKit can stutter while `video.buffered` is queried during decode, so try toggling it off to isolate playback from the diagnostic.
 
 ## Playback Engines
 

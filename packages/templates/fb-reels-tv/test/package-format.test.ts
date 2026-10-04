@@ -800,6 +800,29 @@ describe('Public ShortVideo TV package format', () => {
     expect(function () { harness.elements.video.events.stalled(); }).not.toThrow();
   });
 
+  it('toggles the net stats overlay with the 1 key', async () => {
+    var harness = createInjectHarness([undefined]);
+
+    await loadHarnessFeed(harness);
+    harness.elements.feed.children[0].events.click();
+
+    var overlay = null;
+    var kids = harness.elements.player.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].id === 'net-stats') overlay = kids[i];
+    }
+    expect(overlay).not.toBeNull();
+    expect(overlay.style.display).not.toBe('none');
+
+    harness.keydown('1');
+    expect(overlay.style.display).toBe('none');
+    expect(harness.elements['player-title'].textContent).toBe('stats OFF (press 1 to show)');
+
+    harness.keydown('1');
+    expect(overlay.style.display).toBe('block');
+    expect(harness.elements['player-title'].textContent).toBe('stats ON (press 1 to hide)');
+  });
+
   it('registers the red remote key when the Tizen API is available', async () => {
     var harness = createInjectHarness([undefined]);
 
