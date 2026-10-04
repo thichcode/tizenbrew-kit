@@ -564,7 +564,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.16';
+  var APP_VERSION = '1.2.17';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -810,26 +810,22 @@
     } catch (_) {}
   }
 
-  var NETSTATS_LS_KEY = 'shortvideo_netstats_off';
-  var netStatsOff = false;
-  try {
-    netStatsOff = localStorage.getItem(NETSTATS_LS_KEY) === '1';
-  } catch (_) {
-    netStatsOff = false;
-  }
+  // Reading video.buffered while decoding can stall old Tizen WebKit, so the
+  // overlay polls on a 1 Hz timer. Flip to true only while diagnosing.
+  var NETSTATS_ENABLED = false;
 
   function startNetStats() {
-    lastBufEnd = -1;
-    lastBufTs = 0;
-    intakeEma = -1;
     if (netStatsTimer) {
       try { clearInterval(netStatsTimer); } catch (_) {}
       netStatsTimer = null;
     }
-    if (netStatsOff) {
+    if (!NETSTATS_ENABLED) {
       if (netStatsEl) netStatsEl.style.display = 'none';
       return;
     }
+    lastBufEnd = -1;
+    lastBufTs = 0;
+    intakeEma = -1;
     ensureNetStats();
     if (netStatsEl) netStatsEl.style.display = 'block';
     try {
@@ -837,27 +833,6 @@
     } catch (_) {
       netStatsTimer = null;
     }
-  }
-
-  function toggleNetStats() {
-    netStatsOff = !netStatsOff;
-    try {
-      localStorage.setItem(NETSTATS_LS_KEY, netStatsOff ? '1' : '0');
-    } catch (_) {}
-    if (netStatsOff) {
-      if (netStatsTimer) {
-        try { clearInterval(netStatsTimer); } catch (_) {}
-        netStatsTimer = null;
-      }
-      if (netStatsEl) netStatsEl.style.display = 'none';
-    } else {
-      startNetStats();
-      if (netStatsEl) netStatsEl.style.display = 'block';
-    }
-    if (playerTitleEl) {
-      playerTitleEl.textContent = netStatsOff ? 'stats OFF (green to show)' : 'stats ON (green to hide)';
-    }
-    if (playerLoadingEl) playerLoadingEl.style.display = 'none';
   }
 
   function stopNetStats() {
@@ -1001,7 +976,6 @@
     39: 'ArrowRight',
     40: 'ArrowDown',
     403: 'Red',
-    404: 'Green',
     10009: 'Escape',
     10190: 'MediaPlayPause',
     10252: 'MediaPlayPause',
@@ -1036,11 +1010,6 @@
         seekVideo(10);
         return;
       }
-      if (key === 'Green') {
-        event.preventDefault();
-        toggleNetStats();
-        return;
-      }
       return;
     }
 
@@ -1060,11 +1029,6 @@
       event.preventDefault();
       var item = selectedItem();
       if (item) playItem(item);
-    }
-
-    if (key === 'Green') {
-      event.preventDefault();
-      toggleNetStats();
     }
 
     if (key === 'Red') {
@@ -1137,7 +1101,6 @@
     try {
       if (window.tizen && window.tizen.tvinputdevice && window.tizen.tvinputdevice.registerKey) {
         window.tizen.tvinputdevice.registerKey('ColorF0Red');
-        window.tizen.tvinputdevice.registerKey('ColorF0Green');
       }
     } catch (_) {}
   }

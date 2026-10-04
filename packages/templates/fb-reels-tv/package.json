@@ -1,14 +1,13 @@
 {
   "name": "shortvideo-tv",
-  "version": "1.2.16",
+  "version": "1.2.17",
   "description": "Public short-video feed player for TizenBrew on Samsung Tizen 3",
   "type": "module",
   "packageType": "app",
   "appName": "ShortVideo TV",
   "appPath": "index.html",
   "keys": [
-    "ColorF0Red",
-    "ColorF0Green"
+    "ColorF0Red"
   ],
   "files": [
     "index.html",

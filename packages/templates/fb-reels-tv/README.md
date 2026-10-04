@@ -19,9 +19,8 @@ Tizen 3 TVs run an old WebKit browser that can't handle modern Facebook pages. I
 | OK / Enter | Play (in feed) / Pause-Resume (in player) |
 | ◁ Back | Close player, return to feed |
 | 🔴 Red button | Clear entire feed |
-| 🟢 Green button | Toggle the net-stats overlay (also stops the 1 Hz `video.buffered` poll) |
 
-The overlay poll is persisted in `localStorage`, so once you press Green it stays off across restarts until pressed again. Old Tizen WebKit can stutter while `video.buffered` is queried during decode, so try toggling it off to isolate playback from the diagnostic.
+The overlay poll is opt-in and off by default. Flip `NETSTATS_ENABLED` to `true` and rebuild while diagnosing; do not ship it enabled on Tizen 3 hardware.
 
 ## Playback Engines
 
@@ -34,13 +33,15 @@ The player picks an engine per item and falls back automatically.
 
 Android TV builds short-circuit to `window.AndroidBridge.openVideo` before either web engine runs.
 
-Overlay in the bottom-left corner tells you which engine is live:
+### Net-stats overlay (disabled by default)
 
-- `AVPLAY | T 12.3s/38.9s | stall 0` — native engine, playback position and duration
-- `BUF FULL | IN -- | 360x640 | stall 0` — web engine, file fully buffered (network idle)
-- `BUF 6.2s | IN 1.30x | 720x960 | stall 0` — web engine, seconds of video buffered and load rate relative to playback speed
+`NETSTATS_ENABLED` in `src/inject.ts` is `false`. When enabled, a bottom-left overlay reports which engine is live, buffer depth and load rate:
 
-`IN` below `1.0x` (orange/red) means the network cannot sustain the stream bitrate. `IN` is only meaningful while `BUF` is small.
+- `AVPLAY | T 12.3s/38.9s | stall 0` — native engine
+- `BUF FULL | IN -- | 360x640 | stall 0` — web engine, file fully buffered
+- `BUF 6.2s | IN 1.30x | 720x960 | stall 0` — seconds buffered and load rate vs playback speed
+
+It polls `video.buffered` once per second, which can stall old Tizen WebKit mid-decode, so leave it off unless you are diagnosing playback.
 
 ## Playback Fallback Chain
 

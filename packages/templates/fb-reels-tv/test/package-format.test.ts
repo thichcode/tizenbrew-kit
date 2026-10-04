@@ -251,11 +251,11 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.2.16');
+    expect(pkg.version).toBe('1.2.17');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
-    expect(pkg.keys).toEqual(['ColorF0Red', 'ColorF0Green']);
+    expect(pkg.keys).toEqual(['ColorF0Red']);
     expect(pkg.files).toEqual(['index.html', 'dist']);
   });
 
@@ -784,23 +784,17 @@ describe('Public ShortVideo TV package format', () => {
     expect(source).toContain('Escape');
   });
 
-  it('shows net stats overlay during playback and counts stalls passively', async () => {
+  it('counts stalls passively during playback', async () => {
     var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
     harness.elements.feed.children[0].events.click();
 
-    var overlay = null;
-    var kids = harness.elements.player.children;
-    for (var i = 0; i < kids.length; i++) {
-      if (kids[i].id === 'net-stats') overlay = kids[i];
-    }
-    expect(overlay).not.toBeNull();
     expect(function () { harness.elements.video.events.waiting(); }).not.toThrow();
     expect(function () { harness.elements.video.events.stalled(); }).not.toThrow();
   });
 
-  it('shows a net stats overlay element on first play', async () => {
+  it('keeps the net stats overlay disabled so nothing polls buffered during playback', async () => {
     var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
@@ -811,43 +805,14 @@ describe('Public ShortVideo TV package format', () => {
     for (var i = 0; i < kids.length; i++) {
       if (kids[i].id === 'net-stats') overlay = kids[i];
     }
-    expect(overlay).not.toBeNull();
-    expect(overlay.style.display).not.toBe('none');
+    expect(overlay).toBeNull();
   });
 
-  it('keeps the green key handler bound in the feed screen', async () => {
+  it('registers only the red remote key when the Tizen API is available', async () => {
     var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
 
-    expect(function () { harness.keydown('Green'); }).not.toThrow();
-  });
-
-  it('toggles the net stats overlay with the green remote key', async () => {
-    var harness = createInjectHarness([undefined]);
-
-    await loadHarnessFeed(harness);
-    harness.elements.feed.children[0].events.click();
-
-    var overlay = null;
-    var kids = harness.elements.player.children;
-    for (var i = 0; i < kids.length; i++) {
-      if (kids[i].id === 'net-stats') overlay = kids[i];
-    }
-
-    harness.keydown('Green');
-    expect(overlay.style.display).toBe('none');
-    expect(harness.elements['player-title'].textContent).toBe('stats OFF (green to show)');
-
-    harness.keydown('Green');
-    expect(overlay.style.display).toBe('block');
-  });
-
-  it('registers the red and green remote keys when the Tizen API is available', async () => {
-    var harness = createInjectHarness([undefined]);
-
-    await loadHarnessFeed(harness);
-
-    expect(harness.registeredKeys).toEqual(['ColorF0Red', 'ColorF0Green']);
+    expect(harness.registeredKeys).toEqual(['ColorF0Red']);
   });
 });
