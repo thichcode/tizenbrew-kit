@@ -266,7 +266,7 @@
     document.getElementById('btn-back-play').style.display = 'block';
     if (typeof Hls !== 'undefined' && Hls.isSupported()) {
       if (hls) { hls.destroy(); hls = null; }
-      hls = new Hls();
+      hls = new Hls({ maxBufferLength: 10, maxMaxBufferLength: 30, liveSyncDurationCount: 2, liveMaxLatencyDurationCount: 5, fragLoadingMaxRetry: 4, manifestLoadingMaxRetry: 2 });
       hls.loadSource(url);
       hls.attachMedia(v);
       hls.on(Hls.Events.MANIFEST_PARSED, function () { v.play().catch(function () {}); });
