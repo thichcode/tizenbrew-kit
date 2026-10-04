@@ -522,9 +522,8 @@
     };
     video.addEventListener('loadstart', currentMediaLoadStartHandler);
     video.addEventListener('error', currentMediaErrorHandler);
-    // Assigning src already runs the resource selection algorithm; calling
-    // load() on top of it restarts selection and opens a second connection.
     video.src = sourceUrl;
+    video.load();
 
     if (!shouldPlay) return;
     var result = video.play();
@@ -565,7 +564,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.15';
+  var APP_VERSION = '1.2.16';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;

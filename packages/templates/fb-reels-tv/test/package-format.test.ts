@@ -101,7 +101,9 @@ function createInjectHarness(playResults, options) {
   };
 
   elements.video.error = { code: 4 };
-  elements.video.load = function () {};
+  elements.video.load = function () {
+    if ((!options || options.autoLoadStart !== false) && this.events.loadstart) this.events.loadstart();
+  };
   elements.video.pause = function () {};
   elements.video.removeAttribute = function (name) { if (name === 'src') this._src = ''; };
   elements.video.playCalls = 0;
@@ -118,8 +120,6 @@ function createInjectHarness(playResults, options) {
     set: function (value) {
       this._src = value;
       assignedSources.push(value);
-      // Per spec, assigning src runs resource selection, which emits loadstart.
-      if ((!options || options.autoLoadStart !== false) && this.events.loadstart) this.events.loadstart();
     },
   });
   Object.defineProperty(elements.video, 'currentSrc', {
@@ -251,7 +251,7 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.2.15');
+    expect(pkg.version).toBe('1.2.16');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
