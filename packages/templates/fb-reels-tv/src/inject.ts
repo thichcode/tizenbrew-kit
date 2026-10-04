@@ -403,6 +403,9 @@
     isPlayerOpen = false;
     stallCount = 0;
     stopNetStats();
+    avStopTick();
+    if (useAv) { avCloseQuiet(); useAv = false; }
+    if (video) { try { video.style.display = ''; } catch (_) {} }
     playRequestId += 1;
     mediaAttemptId += 1;
     mediaFailureScheduleId += 1;
@@ -556,6 +559,162 @@
     return true;
   }
 
+  var useAv = false;
+  var avObjEl = null;
+  var avPrepareTimer = null;
+  var avTickTimer = null;
+  var avCurSec = 0;
+  var avDurSec = 0;
+  var avPaused = true;
+
+  function avApi() {
+    try {
+      if (typeof window !== 'undefined' && window.webapis && window.webapis.avplay) {
+        return window.webapis.avplay;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function avCloseQuiet() {
+    var api = avApi();
+    if (!api) return;
+    try { api.stop(); } catch (_) {}
+    try { api.close(); } catch (_) {}
+  }
+
+  function avStopTick() {
+    if (avTickTimer) { try { clearInterval(avTickTimer); } catch (_) {} avTickTimer = null; }
+    if (avPrepareTimer) { try { clearTimeout(avPrepareTimer); } catch (_) {} avPrepareTimer = null; }
+  }
+
+  function avEnsureObject() {
+    if (avObjEl) return true;
+    try {
+      var el = document.createElement('object');
+      el.setAttribute('type', 'application/avplayer');
+      el.setAttribute('id', 'av-player-obj');
+      el.style.position = 'absolute';
+      el.style.left = '0px';
+      el.style.top = '0px';
+      el.style.width = '0px';
+      el.style.height = '0px';
+      (document.body || playerEl).appendChild(el);
+      avObjEl = el;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function avFallbackToHtml(item, requestId, sourceUrl) {
+    if (!isPlayerOpen || requestId !== playRequestId) return;
+    avStopTick();
+    avCloseQuiet();
+    useAv = false;
+    if (video) { try { video.style.display = ''; } catch (_) {} }
+    if (playerLoadingEl) {
+      playerLoadingEl.style.display = 'block';
+      playerLoadingEl.style.color = '#888';
+      playerLoadingEl.textContent = 'Loading...';
+    }
+    startMediaAttempt(item, requestId, sourceUrl, true);
+  }
+
+  function avStart(item, requestId, sourceUrl) {
+    var api = avApi();
+    if (!api || !avEnsureObject()) return false;
+    try {
+      avCloseQuiet();
+      var w = 1920;
+      var h = 1080;
+      try {
+        if (window.innerWidth > 0) w = window.innerWidth;
+        if (window.innerHeight > 0) h = window.innerHeight;
+      } catch (_) {}
+      api.open(sourceUrl);
+      api.setDisplayRect(0, 0, w, h);
+      api.setListener({
+        onbufferingstart: function () {
+          if (playerLoadingEl && isPlayerOpen && requestId === playRequestId) {
+            playerLoadingEl.style.display = 'block';
+            playerLoadingEl.style.color = '#888';
+            playerLoadingEl.textContent = 'Buffering...';
+          }
+        },
+        onbufferingcomplete: function () {
+          if (playerLoadingEl && isPlayerOpen && requestId === playRequestId) {
+            playerLoadingEl.style.display = 'none';
+          }
+        },
+        oncurrentplaytime: function (t) {
+          try { avCurSec = (t || 0) / 1000; } catch (_) {}
+        },
+        onstreamcompleted: function () {
+          if (!isPlayerOpen || requestId !== playRequestId) return;
+          moveSelection(1);
+          var next = selectedItem();
+          if (next) playItem(next);
+        }
+      });
+      avCurSec = 0;
+      avDurSec = 0;
+      avPaused = true;
+      useAv = true;
+      if (video) { try { video.style.display = 'none'; } catch (_) {} }
+      api.prepareAsync(function () {
+        if (!isPlayerOpen || requestId !== playRequestId || !useAv) return;
+        if (avPrepareTimer) { try { clearTimeout(avPrepareTimer); } catch (_) {} avPrepareTimer = null; }
+        try { avDurSec = (api.getDuration() || 0) / 1000; } catch (_) {}
+        try {
+          api.play();
+          avPaused = false;
+        } catch (err) {
+          avFallbackToHtml(item, requestId, sourceUrl);
+          return;
+        }
+        if (playerLoadingEl) playerLoadingEl.style.display = 'none';
+        if (loadTimeout) clearTimeout(loadTimeout);
+        try {
+          avTickTimer = setInterval(avTick, 500);
+        } catch (_) {
+          avTickTimer = null;
+        }
+      }, function () {
+        avFallbackToHtml(item, requestId, sourceUrl);
+      });
+      avPrepareTimer = setTimeout(function () {
+        avFallbackToHtml(item, requestId, sourceUrl);
+      }, 15000);
+      return true;
+    } catch (_) {
+      try { avCloseQuiet(); } catch (_) {}
+      return false;
+    }
+  }
+
+  function avTick() {
+    if (!isPlayerOpen || !useAv) return;
+    var api = avApi();
+    if (!api) return;
+    try { avCurSec = (api.getCurrentTime() || 0) / 1000; } catch (_) {}
+    try {
+      var d = (api.getDuration() || 0) / 1000;
+      if (isFinite(d) && d > 0) avDurSec = d;
+    } catch (_) {}
+    updateSeekBar();
+  }
+
+  function mediaCurSec() {
+    if (useAv) return avCurSec || 0;
+    try { return (video && video.currentTime) || 0; } catch (_) { return 0; }
+  }
+
+  function mediaDurSec() {
+    if (useAv) return avDurSec || 0;
+    try { return (video && video.duration) || 0; } catch (_) { return 0; }
+  }
+
   function ensureNetStats() {
     if (netStatsEl || !playerEl) return;
     try {
@@ -581,7 +740,17 @@
   }
 
   function updateNetStats() {
-    if (!isPlayerOpen || !video || !netStatsEl) return;
+    if (!isPlayerOpen || !netStatsEl) return;
+    if (useAv) {
+      try {
+        var c = avCurSec || 0;
+        var d = avDurSec || 0;
+        netStatsEl.style.color = '#4caf50';
+        netStatsEl.textContent = 'AVPLAY | T ' + c.toFixed(1) + 's/' + (d ? d.toFixed(1) + 's' : '?') + ' | stall ' + stallCount;
+      } catch (_) {}
+      return;
+    }
+    if (!video) return;
     try {
       var now = Date.now();
       var cur = video.currentTime || 0;
@@ -654,6 +823,9 @@
     var requestId = ++playRequestId;
     sourceFallbackStage = 0;
     stallCount = 0;
+    avStopTick();
+    if (useAv) { avCloseQuiet(); useAv = false; }
+    if (video) { try { video.style.display = ''; } catch (_) {} }
     startNetStats();
     if (playerEl) playerEl.classList.add('active');
     if (playerLoadingEl) {
@@ -674,12 +846,23 @@
       if (playerTitleEl) playerTitleEl.textContent = resolved.title;
       video.autoplay = true;
       video.controls = false;
-      startMediaAttempt(resolved, requestId, resolved.videoUrl, true);
+      if (!avStart(resolved, requestId, resolved.videoUrl)) {
+        startMediaAttempt(resolved, requestId, resolved.videoUrl, true);
+      }
     });
   }
 
   function togglePlayback() {
     if (!video || !isPlayerOpen) return;
+    if (useAv) {
+      var api = avApi();
+      if (!api) return;
+      try {
+        if (avPaused) { api.play(); avPaused = false; }
+        else { api.pause(); avPaused = true; }
+      } catch (_) {}
+      return;
+    }
     if (video.paused) {
       var result = video.play();
       if (result && result.catch) result.catch(function () {});
@@ -691,6 +874,20 @@
   var seekIndicatorTimer = null;
   function seekVideo(seconds) {
     if (!video || !isPlayerOpen) return;
+    if (useAv) {
+      var api = avApi();
+      if (!api) return;
+      var target = mediaCurSec() + seconds;
+      if (target < 0) target = 0;
+      var avDur = mediaDurSec();
+      if (isFinite(avDur) && avDur > 0 && target > avDur) target = avDur;
+      try {
+        api.seekTo(Math.floor(target * 1000), function () {}, function () {});
+      } catch (_) {}
+      updateSeekBar();
+      showSeekIndicator(seconds > 0 ? '+' + seconds + 's' : seconds + 's');
+      return;
+    }
     var target = video.currentTime + seconds;
     if (target < 0) target = 0;
     if (isFinite(video.duration) && target > video.duration) target = video.duration;
@@ -700,7 +897,14 @@
   }
 
   function updateSeekBar() {
-    if (!video || !seekBarFill) return;
+    if (!seekBarFill) return;
+    if (useAv) {
+      var avDur = mediaDurSec();
+      var avPct = avDur ? (mediaCurSec() / avDur) * 100 : 0;
+      seekBarFill.style.width = avPct + '%';
+      return;
+    }
+    if (!video) return;
     var pct = video.duration ? (video.currentTime / video.duration) * 100 : 0;
     seekBarFill.style.width = pct + '%';
   }
