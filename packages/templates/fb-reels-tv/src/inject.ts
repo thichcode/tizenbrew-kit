@@ -559,7 +559,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.13';
+  var APP_VERSION = '1.2.14';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
