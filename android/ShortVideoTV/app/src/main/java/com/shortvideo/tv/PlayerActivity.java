@@ -106,7 +106,9 @@ public class PlayerActivity extends AppCompatActivity {
                 showError("Timed out loading video");
             }
         };
-        timeoutHandler.postDelayed(timeoutRunnable, 30000);
+        // Facebook URLs now route through the resolver's /play endpoint, so the
+        // first request includes a yt-dlp resolve. Allow for a cold backend.
+        timeoutHandler.postDelayed(timeoutRunnable, 45000);
 
         if (videoUrl != null) {
             MediaItem mediaItem = MediaItem.fromUri(videoUrl);

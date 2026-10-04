@@ -481,6 +481,11 @@
       var androidUrl = sourceUrl;
       if (item && item.source === 'Bilibili' && item.sourceUrl) {
         androidUrl = FALLBACK_RESOLVER_URL + '/dash?url=' + encodeURIComponent(item.sourceUrl) + '&api_key=' + encodeURIComponent(FALLBACK_API_KEY);
+      } else if (item && item.source === 'Facebook' && item._redirectUrl) {
+        // Feed items carry the CDN URL resolved at submit time. Signed fbcdn
+        // links expire, and the APK has no fallback chain, so a stale link
+        // just times out. Always resolve fresh through the redirect endpoint.
+        androidUrl = item._redirectUrl;
       }
       androidBridge.openVideo(androidUrl, item && item.title || '');
       return;
