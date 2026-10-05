@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>ShortVideo TV</title>
+  <script type="text/javascript" src="$WEBAPIS/webapis/webapis.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -67,6 +68,9 @@
       max-width: 900px;
       overflow-y: auto;
       max-height: 70vh;
+      -webkit-overflow-scrolling: touch;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     }
     .item {
       padding: 12px 18px;
@@ -77,6 +81,7 @@
       display: flex;
       align-items: center;
       gap: 14px;
+      contain: content;
     }
     .item:focus, .item.focused {
       border-color: #e94560;
@@ -143,6 +148,8 @@
       width: 100%; height: 100%;
       z-index: 9999;
       background: #000;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     }
     #player.active { display: block; }
     #video { width: 100%; height: 100%; background: #000; }
@@ -157,6 +164,8 @@
       justify-content: space-between;
       gap: 20px;
       align-items: flex-end;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     }
     #player-title { font-size: 1rem; font-weight: 700; }
     #player-help { color: #aaa; font-size: 0.78rem; white-space: nowrap; }
@@ -164,7 +173,7 @@
       position: absolute; left: 0; right: 0; bottom: 60px; height: 3px;
       background: rgba(255,255,255,0.15); z-index: 10;
     }
-    #seek-bar-fill { height: 100%; width: 0%; background: #e94560; transition: width 0.1s; }
+    #seek-bar-fill { height: 100%; width: 0%; background: #e94560; will-change: width; }
     #seek-indicator {
       display: none; position: absolute; top: 50%; left: 50%;
       transform: translate(-50%,-50%); background: rgba(0,0,0,0.7);

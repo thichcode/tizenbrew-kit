@@ -251,7 +251,7 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.2.17');
+    expect(pkg.version).toBe('1.2.18');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
@@ -814,5 +814,31 @@ describe('Public ShortVideo TV package format', () => {
     await loadHarnessFeed(harness);
 
     expect(harness.registeredKeys).toEqual(['ColorF0Red']);
+  });
+
+  it('loads webapis script and applies hardware accelerated styles in index.html', () => {
+    var html = readFileSync(resolve(root, 'index.html'), 'utf8');
+
+    expect(html).toContain('$WEBAPIS/webapis/webapis.js');
+    expect(html).toContain('translateZ(0)');
+  });
+
+  it('does not use continuous css transitions on the seek bar fill', () => {
+    var html = readFileSync(resolve(root, 'index.html'), 'utf8');
+
+    expect(html).not.toContain('transition: width');
+    expect(html).toContain('will-change: width');
+  });
+
+  it('does not wipe and re-render feed elements if incoming poll has identical items', async () => {
+    var harness = createInjectHarness([undefined]);
+
+    await loadHarnessFeed(harness);
+    var firstRenderFirstChild = harness.elements.feed.children[0];
+
+    harness.poll();
+    await flushPromises();
+
+    expect(harness.elements.feed.children[0]).toBe(firstRenderFirstChild);
   });
 });

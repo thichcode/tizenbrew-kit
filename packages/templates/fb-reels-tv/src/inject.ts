@@ -17,6 +17,16 @@
   var feedRequestId = 0;
   var feedRequestInFlight = false;
   var feedRequestStartedAt = 0;
+  var feedDirtyWhilePlaying = false;
+  var lastSeekPct = -1;
+
+  function feedItemsEqual(a, b) {
+    if (!a || !b || a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id !== b[i].id || a[i].videoUrl !== b[i].videoUrl || a[i].title !== b[i].title) return false;
+    }
+    return true;
+  }
 
   var statusEl = document.getElementById('status');
   var feedEl = document.getElementById('feed');
@@ -254,12 +264,18 @@
       feedEl.appendChild(node);
     });
 
-    selectedIndex = 0;
+    if (selectedIndex >= items.length) {
+      selectedIndex = Math.max(0, items.length - 1);
+    }
+    if (selectedIndex < 0) {
+      selectedIndex = 0;
+    }
     setTimeout(focusSelected, 60);
     if (!isPlayerOpen) resolveTitlesInBackground();
   }
 
   function fetchSuggestions() {
+    if (isPlayerOpen) return;
     fetch(WORKER_URL + '/suggestions?code=' + deviceCode())
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -342,24 +358,37 @@
     playItem(sItem);
   }
 
+  var resolvingTitlesMap = {};
   function resolveTitlesInBackground() {
+    if (isPlayerOpen) return;
+    var candidates = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       if (item.source !== 'Facebook' && item.source !== 'Bilibili') continue;
       if (item.title !== 'Facebook Reel' && item.title !== 'Bilibili Video' && item.title !== '(untitled)') continue;
-      (function (idx) {
-        fetch(FALLBACK_RESOLVER_URL + '/resolve?url=' + encodeURIComponent(item.sourceUrl), {
+      if (resolvingTitlesMap[item.id]) continue;
+      candidates.push(item);
+    }
+    if (!candidates.length) return;
+    var batch = candidates.slice(0, 2);
+    for (var b = 0; b < batch.length; b++) {
+      (function (targetItem) {
+        resolvingTitlesMap[targetItem.id] = true;
+        fetch(FALLBACK_RESOLVER_URL + '/resolve?url=' + encodeURIComponent(targetItem.sourceUrl), {
           headers: { 'X-API-Key': FALLBACK_API_KEY }
         })
           .then(function (r) { return r.json(); })
           .then(function (data) {
+            delete resolvingTitlesMap[targetItem.id];
             if (data.ok && data.resolved && data.resolved.title) {
-              items[idx].title = data.resolved.title;
-              updateItemTitleInDom(items[idx].id, data.resolved.title);
+              targetItem.title = data.resolved.title;
+              updateItemTitleInDom(targetItem.id, data.resolved.title);
             }
           })
-          .catch(function () {});
-      })(i);
+          .catch(function () {
+            delete resolvingTitlesMap[targetItem.id];
+          });
+      })(batch[b]);
     }
   }
 
@@ -430,6 +459,12 @@
       try { video.load(); } catch (_) {}
     }
     if (helpEl) helpEl.style.display = 'block';
+    if (feedDirtyWhilePlaying) {
+      feedDirtyWhilePlaying = false;
+      renderFeed();
+    }
+    if (!pollTimer) { pollTimer = setInterval(fetchFeed, POLL_INTERVAL); }
+    if (!suggestPollTimer) { suggestPollTimer = setInterval(fetchSuggestions, SUGGEST_POLL_INTERVAL); }
     setTimeout(focusSelected, 60);
   }
 
@@ -564,7 +599,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.17';
+  var APP_VERSION = '1.2.18';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -603,9 +638,10 @@
       el.style.position = 'absolute';
       el.style.left = '0px';
       el.style.top = '0px';
-      el.style.width = '0px';
-      el.style.height = '0px';
-      (document.body || playerEl).appendChild(el);
+      el.style.width = '100%';
+      el.style.height = '100%';
+      el.style.zIndex = '1';
+      (playerEl || document.body).appendChild(el);
       avObjEl = el;
       return true;
     } catch (_) {
@@ -649,6 +685,12 @@
       } catch (_) {}
       api.open(sourceUrl);
       api.setDisplayRect(0, 0, w, h);
+      try {
+        if (typeof api.setBufferingParamWithMode === 'function') {
+          api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_MODE_SIZE', 2048);
+          api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_MODE_SIZE', 4096);
+        }
+      } catch (_) {}
       api.setListener({
         onbufferingstart: function () {
           if (playerLoadingEl && isPlayerOpen && requestId === playRequestId) {
@@ -848,6 +890,14 @@
     }
   }
 
+  function safeClearInterval(timer) {
+    if (!timer) return null;
+    try {
+      if (typeof clearInterval !== 'undefined') clearInterval(timer);
+    } catch (_) {}
+    return null;
+  }
+
   function countStall() {
     if (!isPlayerOpen) return;
     stallCount += 1;
@@ -856,6 +906,9 @@
   function playItem(item) {
     clearError();
     isPlayerOpen = true;
+    lastSeekPct = -1;
+    pollTimer = safeClearInterval(pollTimer);
+    suggestPollTimer = safeClearInterval(suggestPollTimer);
     var requestId = ++playRequestId;
     sourceFallbackStage = 0;
     stallCount = 0;
@@ -934,15 +987,12 @@
 
   function updateSeekBar() {
     if (!seekBarFill) return;
-    if (useAv) {
-      var avDur = mediaDurSec();
-      var avPct = avDur ? (mediaCurSec() / avDur) * 100 : 0;
-      seekBarFill.style.width = avPct + '%';
-      return;
-    }
-    if (!video) return;
-    var pct = video.duration ? (video.currentTime / video.duration) * 100 : 0;
-    seekBarFill.style.width = pct + '%';
+    var cur = mediaCurSec();
+    var dur = mediaDurSec();
+    var pct = (dur > 0 && isFinite(dur)) ? (cur / dur) * 100 : 0;
+    if (Math.abs(pct - lastSeekPct) < 0.25 && pct < 99) return;
+    lastSeekPct = pct;
+    seekBarFill.style.width = pct.toFixed(1) + '%';
   }
 
   function showSeekIndicator(text) {
@@ -1070,12 +1120,19 @@
           lastSeenTopItemId = '';
         }
         if (parsed.length || items.length) {
+          var hasChanged = !feedItemsEqual(items, parsed);
           items = parsed;
           setStatus(parsed.length + ' video' + (parsed.length > 1 ? 's' : ''));
-          renderFeed();
-          maybeAutoPlayLatest(previousTopItemId);
+          if (isPlayerOpen) {
+            if (hasChanged) feedDirtyWhilePlaying = true;
+          } else {
+            if (hasChanged || !feedEl || !feedEl.children.length) {
+              renderFeed();
+            }
+            maybeAutoPlayLatest(previousTopItemId);
+          }
         }
-        if (!items.length) {
+        if (!items.length && !isPlayerOpen) {
           showSetup();
           setStatus('Waiting for videos...');
         }
