@@ -275,8 +275,14 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
 
     try {
       const resolved = await resolveFacebookUrl(platformUrl);
-      if (resolved && resolved.title) fbTitle = resolved.title;
-      if (resolved && resolved.thumbnailUrl) fbThumbnailUrl = resolved.thumbnailUrl;
+      if (resolved) {
+        if (resolved.videoUrl && (fbVideoUrl === platformUrl || !fallbackResolved)) {
+          fbVideoUrl = resolved.videoUrl;
+          resolvedAt = new Date().toISOString();
+        }
+        if (resolved.title) fbTitle = resolved.title;
+        if (resolved.thumbnailUrl) fbThumbnailUrl = resolved.thumbnailUrl;
+      }
     } catch {}
 
     feedItem = {

@@ -165,6 +165,30 @@ describe('shortvideo-feed worker', () => {
       );
     });
 
+    it('stores direct Facebook CDN URL when fallback resolver fails but scraper succeeds', async () => {
+      const testEnv = env({ FALLBACK_RESOLVER_URL: 'https://resolver.example.com' });
+      const rawUrl = 'https://www.facebook.com/reel/123456';
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'resolver failed' }), {
+          status: 502,
+          headers: { 'content-type': 'application/json' },
+        }))
+        .mockResolvedValueOnce(new Response(
+          '<html><head><meta property="og:video:secure_url" content="https://video.xx.fbcdn.net/v/t42.1790-2/direct.mp4"><meta property="og:title" content="Scraped Title"><meta property="og:image" content="https://scontent.xx.fbcdn.net/thumb.jpg"></head></html>',
+          { status: 200, headers: { 'content-type': 'text/html' } },
+        )),
+      );
+
+      const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, testEnv);
+      expect(res.status).toBe(200);
+      const item = (await json(res)).item as Record<string, unknown>;
+      expect(item.source).toBe('Facebook');
+      expect(item.sourceUrl).toBe(rawUrl);
+      expect(item.videoUrl).toBe('https://video.xx.fbcdn.net/v/t42.1790-2/direct.mp4');
+      expect(item.title).toBe('Scraped Title');
+      expect(typeof item.resolvedAt).toBe('string');
+    });
+
     it('uses fallback resolver title and thumbnail when Facebook scraper fails', async () => {
       const testEnv = env({
         FALLBACK_RESOLVER_URL: 'https://resolver.example.com',

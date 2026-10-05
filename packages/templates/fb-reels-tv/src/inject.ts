@@ -434,6 +434,8 @@
     stopNetStats();
     avStopTick();
     if (useAv) { avCloseQuiet(); useAv = false; }
+    try { document.body.style.backgroundColor = '#070707'; } catch (_) {}
+    if (playerEl) { try { playerEl.style.backgroundColor = '#000'; } catch (_) {} }
     if (video) { try { video.style.display = ''; } catch (_) {} }
     playRequestId += 1;
     mediaAttemptId += 1;
@@ -599,7 +601,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.18';
+  var APP_VERSION = '1.2.19';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -640,7 +642,8 @@
       el.style.top = '0px';
       el.style.width = '100%';
       el.style.height = '100%';
-      el.style.zIndex = '1';
+      el.style.zIndex = '0';
+      el.style.backgroundColor = 'transparent';
       (playerEl || document.body).appendChild(el);
       avObjEl = el;
       return true;
@@ -655,6 +658,8 @@
     avCloseQuiet();
     if (useAv) avSupport = 'fail';
     useAv = false;
+    try { document.body.style.backgroundColor = '#070707'; } catch (_) {}
+    if (playerEl) { try { playerEl.style.backgroundColor = '#000'; } catch (_) {} }
     if (video) { try { video.style.display = ''; } catch (_) {} }
     if (playerLoadingEl) {
       playerLoadingEl.style.display = 'block';
@@ -686,9 +691,15 @@
       api.open(sourceUrl);
       api.setDisplayRect(0, 0, w, h);
       try {
+        if (typeof api.setBufferingParam === 'function') {
+          try { api.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', 4); } catch (_) {}
+          try { api.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', 8); } catch (_) {}
+        }
+      } catch (_) {}
+      try {
         if (typeof api.setBufferingParamWithMode === 'function') {
-          api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_MODE_SIZE', 2048);
-          api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_MODE_SIZE', 4096);
+          try { api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_MODE_SIZE', 2048); } catch (_) {}
+          try { api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_MODE_SIZE', 4096); } catch (_) {}
         }
       } catch (_) {}
       api.setListener({
@@ -719,6 +730,8 @@
       avPaused = true;
       useAv = true;
       if (video) { try { video.style.display = 'none'; } catch (_) {} }
+      if (playerEl) { try { playerEl.style.backgroundColor = 'transparent'; } catch (_) {} }
+      try { document.body.style.backgroundColor = 'transparent'; } catch (_) {}
       api.prepareAsync(function () {
         if (!isPlayerOpen || requestId !== playRequestId || !useAv) return;
         if (avPrepareTimer) { try { clearTimeout(avPrepareTimer); } catch (_) {} avPrepareTimer = null; }

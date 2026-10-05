@@ -178,6 +178,16 @@ class FacebookFormatTests(unittest.TestCase):
             ],
         )
 
+    def test_resolve_and_get_cdn_falls_back_to_scraper_when_yt_dlp_fails(self):
+        failed = CompletedProcess([], 1, stdout="", stderr="ERROR: Cannot parse data")
+        scraped_data = {"videoUrl": CDN_URL, "title": "Scraped Reel", "thumbnailUrl": None}
+
+        with patch.object(app.subprocess, "run", return_value=failed), \
+             patch.object(app, "scrape_facebook_og", return_value=scraped_data):
+            result = app.resolve_and_get_cdn(FACEBOOK_URL)
+
+        self.assertEqual(result, CDN_URL)
+
     def test_play_redirect_mode_returns_fresh_cdn_location(self):
         request = SimpleNamespace(headers={}, app=SimpleNamespace(state=SimpleNamespace()))
 
