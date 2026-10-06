@@ -93,6 +93,7 @@ function createInjectHarness(playResults, options) {
     'player-loading': createElement('div'),
     video: createElement('video'),
     'player-title': createElement('div'),
+    'player-time': createElement('div'),
     setup: createElement('div'),
     'setup-code': createElement('div'),
     'setup-qr': createElement('img'),
@@ -251,7 +252,7 @@ describe('Public ShortVideo TV package format', () => {
     var pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
 
     expect(pkg.name).toBe('shortvideo-tv');
-    expect(pkg.version).toBe('1.2.20');
+    expect(pkg.version).toBe('1.2.21');
     expect(pkg.appName).toBe('ShortVideo TV');
     expect(pkg.packageType).toBe('app');
     expect(pkg.appPath).toBe('index.html');
@@ -794,7 +795,7 @@ describe('Public ShortVideo TV package format', () => {
     expect(function () { harness.elements.video.events.stalled(); }).not.toThrow();
   });
 
-  it('keeps the net stats overlay disabled so nothing polls buffered during playback', async () => {
+  it('shows the net stats HUD overlay element during playback', async () => {
     var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
@@ -805,7 +806,28 @@ describe('Public ShortVideo TV package format', () => {
     for (var i = 0; i < kids.length; i++) {
       if (kids[i].id === 'net-stats') overlay = kids[i];
     }
-    expect(overlay).toBeNull();
+    expect(overlay).not.toBeNull();
+    expect(overlay.style.display).not.toBe('none');
+  });
+
+  it('toggles the net stats HUD overlay with Up, Down or Info remote key', async () => {
+    var harness = createInjectHarness([undefined]);
+
+    await loadHarnessFeed(harness);
+    harness.elements.feed.children[0].events.click();
+
+    var overlay = null;
+    var kids = harness.elements.player.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].id === 'net-stats') overlay = kids[i];
+    }
+    expect(overlay).not.toBeNull();
+
+    harness.keydown('ArrowUp');
+    expect(overlay.style.display).toBe('none');
+
+    harness.keydown('ArrowDown');
+    expect(overlay.style.display).toBe('block');
   });
 
   it('registers only the red remote key when the Tizen API is available', async () => {

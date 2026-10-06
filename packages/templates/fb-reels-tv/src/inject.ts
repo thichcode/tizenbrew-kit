@@ -37,6 +37,7 @@
   var playerLoadingEl = document.getElementById('player-loading');
   var video = document.getElementById('video');
   var playerTitleEl = document.getElementById('player-title');
+  var playerTimeEl = document.getElementById('player-time');
   var playerHelpEl = document.getElementById('player-help');
   var seekBarFill = document.getElementById('seek-bar-fill');
   var seekIndicator = document.getElementById('seek-indicator');
@@ -438,7 +439,8 @@
     try { document.body.style.backgroundColor = '#070707'; } catch (_) {}
     if (playerEl) { try { playerEl.style.backgroundColor = '#000'; } catch (_) {} }
     if (video) { try { video.style.display = ''; } catch (_) {} }
-    if (playerHelpEl) playerHelpEl.textContent = '← → Seek \u00a0 OK: pause \u00a0 Back: feed';
+    if (playerHelpEl) playerHelpEl.textContent = '▲/▼: HUD \u00a0 ← →: Seek \u00a0 OK: pause \u00a0 Back: feed';
+    if (playerTimeEl) playerTimeEl.textContent = '';
     playRequestId += 1;
     mediaAttemptId += 1;
     mediaFailureScheduleId += 1;
@@ -603,7 +605,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.20';
+  var APP_VERSION = '1.2.21';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -611,6 +613,13 @@
   var avCurSec = 0;
   var avDurSec = 0;
   var avPaused = true;
+
+  function formatTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return '0:00';
+    var mins = Math.floor(seconds / 60);
+    var secs = Math.floor(seconds % 60);
+    return mins + ':' + (secs < 10 ? '0' : '') + secs;
+  }
 
   function avApi() {
     try {
@@ -642,7 +651,7 @@
       durLabel = mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60) + 'm' : mins + 'm';
     }
     var tag = '[' + engine + (durLabel ? ' • ' + (durSec > 300 ? 'Phim ' : '') + durLabel : '') + '] ';
-    playerHelpEl.textContent = tag + '← → Seek \u00a0 OK: pause \u00a0 Back: feed';
+    playerHelpEl.textContent = tag + '▲/▼: HUD \u00a0 ← →: Seek \u00a0 OK: pause \u00a0 Back: feed';
   }
 
   function avCloseQuiet() {
@@ -670,7 +679,11 @@
       el.style.height = '100%';
       el.style.zIndex = '0';
       el.style.backgroundColor = 'transparent';
-      (playerEl || document.body).appendChild(el);
+      if (playerEl && playerEl.firstChild) {
+        playerEl.insertBefore(el, playerEl.firstChild);
+      } else {
+        (playerEl || document.body).appendChild(el);
+      }
       avObjEl = el;
       return true;
     } catch (_) {
@@ -828,15 +841,16 @@
       netStatsEl.setAttribute('id', 'net-stats');
       var style = netStatsEl.style;
       style.position = 'absolute';
-      style.left = '12px';
+      style.left = '16px';
       style.bottom = '76px';
-      style.background = 'rgba(0,0,0,0.65)';
+      style.background = 'rgba(0,0,0,0.75)';
       style.color = '#4caf50';
       style.fontSize = '12px';
       style.fontFamily = 'monospace';
-      style.padding = '6px 10px';
+      style.padding = '6px 12px';
       style.borderRadius = '6px';
-      style.zIndex = '30';
+      style.border = '1px solid rgba(76,175,80,0.3)';
+      style.zIndex = '35';
       style.pointerEvents = 'none';
       netStatsEl.textContent = '...';
       playerEl.appendChild(netStatsEl);
@@ -862,7 +876,7 @@
         var c = avCurSec || 0;
         var d = avDurSec || 0;
         netStatsEl.style.color = '#4caf50';
-        netStatsEl.textContent = tag + ' | T ' + c.toFixed(1) + 's/' + (d ? d.toFixed(1) + 's' : '?') + ' | stall ' + stallCount;
+        netStatsEl.textContent = tag + ' | T ' + formatTime(c) + '/' + (d ? formatTime(d) : '?') + ' | stall ' + stallCount;
       } catch (_) {}
       return;
     }
@@ -900,9 +914,29 @@
     } catch (_) {}
   }
 
-  // Reading video.buffered while decoding can stall old Tizen WebKit, so the
-  // overlay polls on a 1 Hz timer. Flip to true only while diagnosing.
-  var NETSTATS_ENABLED = false;
+  var NETSTATS_ENABLED = true;
+
+  function toggleNetStats() {
+    NETSTATS_ENABLED = !NETSTATS_ENABLED;
+    if (!NETSTATS_ENABLED) {
+      if (netStatsTimer) {
+        try { clearInterval(netStatsTimer); } catch (_) {}
+        netStatsTimer = null;
+      }
+      if (netStatsEl) netStatsEl.style.display = 'none';
+    } else {
+      ensureNetStats();
+      if (netStatsEl) netStatsEl.style.display = 'block';
+      updateNetStats();
+      if (!netStatsTimer) {
+        try {
+          netStatsTimer = setInterval(updateNetStats, 1000);
+        } catch (_) {
+          netStatsTimer = null;
+        }
+      }
+    }
+  }
 
   function startNetStats() {
     if (netStatsTimer) {
@@ -918,6 +952,7 @@
     intakeEma = -1;
     ensureNetStats();
     if (netStatsEl) netStatsEl.style.display = 'block';
+    updateNetStats();
     try {
       netStatsTimer = setInterval(updateNetStats, 1000);
     } catch (_) {
@@ -984,6 +1019,8 @@
       video.autoplay = true;
       video.controls = false;
       if (!avStart(resolved, requestId, resolved.videoUrl)) {
+        var durGuess = detectVideoDuration(resolved, resolved.videoUrl);
+        updatePlayerBadge('WebPlayer', durGuess);
         startMediaAttempt(resolved, requestId, resolved.videoUrl, true);
       }
     });
@@ -1034,9 +1071,12 @@
   }
 
   function updateSeekBar() {
-    if (!seekBarFill) return;
     var cur = mediaCurSec();
     var dur = mediaDurSec();
+    if (playerTimeEl) {
+      playerTimeEl.textContent = formatTime(cur) + ' / ' + (dur > 0 ? formatTime(dur) : '--:--');
+    }
+    if (!seekBarFill) return;
     var pct = (dur > 0 && isFinite(dur)) ? (cur / dur) * 100 : 0;
     if (Math.abs(pct - lastSeekPct) < 0.25 && pct < 99) return;
     lastSeekPct = pct;
@@ -1074,6 +1114,8 @@
     39: 'ArrowRight',
     40: 'ArrowDown',
     403: 'Red',
+    404: 'Green',
+    457: 'Info',
     10009: 'Escape',
     10190: 'MediaPlayPause',
     10252: 'MediaPlayPause',
@@ -1106,6 +1148,11 @@
       if (key === 'ArrowRight') {
         event.preventDefault();
         seekVideo(10);
+        return;
+      }
+      if (key === 'ArrowUp' || key === 'ArrowDown' || key === 'Info' || key === 'Green') {
+        event.preventDefault();
+        toggleNetStats();
         return;
       }
       return;
