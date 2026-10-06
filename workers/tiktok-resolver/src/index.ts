@@ -1,5 +1,5 @@
 import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
-import { resolveFacebookUrl } from './resolver-facebook';
+import { resolveFacebookUrl, parseFacebookHtml } from './resolver-facebook';
 import { renderSetupPage } from './setup-page';
 
 interface FeedItem {
@@ -324,6 +324,49 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
   return json({ ok: true, item: feedItem });
 }
 
+async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : '';
+  if (!isValidCode(code)) {
+    return json({ error: 'Missing or invalid code' }, 400);
+  }
+
+  const htmlContent = typeof body.html === 'string' ? body.html : '';
+  const platformUrl = typeof body.url === 'string' ? body.url.trim() : '';
+
+  if (!htmlContent) {
+    return json({ error: 'Missing "html" field' }, 400);
+  }
+
+  const resolved = parseFacebookHtml(htmlContent, platformUrl);
+  if (!resolved || !resolved.videoUrl) {
+    return json({ error: 'Could not extract video from HTML' }, 422);
+  }
+
+  const feedItem: FeedItem = {
+    id: generateId(platformUrl || resolved.videoUrl),
+    title: resolved.title,
+    source: 'Facebook',
+    sourceUrl: platformUrl || resolved.videoUrl,
+    videoUrl: resolved.videoUrl,
+    thumbnailUrl: resolved.thumbnailUrl || '',
+    duration: 0,
+    resolvedAt: new Date().toISOString(),
+  };
+
+  const items = await readFeed(env, code);
+  items.unshift(feedItem);
+  await writeFeed(env, code, deduplicate(items).slice(0, MAX_ITEMS));
+
+  return json({ ok: true, item: feedItem });
+}
+
 async function handleFeed(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -506,6 +549,7 @@ export default {
 
       if (request.method === 'GET' && url.pathname === '/setup') return handleSetup(url);
       if (request.method === 'POST' && url.pathname === '/submit') return handleSubmit(request, env);
+      if (request.method === 'POST' && url.pathname === '/submit-html') return handleSubmitHtml(request, env);
       if (request.method === 'GET' && url.pathname === '/feed') return handleFeed(request, env);
       if (request.method === 'DELETE' && url.pathname === '/feed') return handleDeleteFeed(request, env);
       if (request.method === 'GET' && url.pathname === '/suggestions') return handleSuggestions(request, env);

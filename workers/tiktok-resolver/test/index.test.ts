@@ -306,4 +306,51 @@ describe('shortvideo-feed worker', () => {
     });
 
   });
+
+  describe('POST /submit-html', () => {
+    it('rejects missing or invalid code', async () => {
+      const res = await post('https://feed.example.com/submit-html', { code: 'bad', html: '<html></html>' });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects missing html', async () => {
+      const res = await post('https://feed.example.com/submit-html', { code: CODE });
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects html without video', async () => {
+      const res = await post('https://feed.example.com/submit-html', { code: CODE, html: '<html><head><title>No video</title></head></html>' });
+      expect(res.status).toBe(422);
+    });
+
+    it('successfully extracts og:video and saves to feed', async () => {
+      const testEnv = env();
+      const sampleHtml = `
+        <!doctype html><html><head>
+          <meta property="og:title" content="Test Reel VN" />
+          <meta property="og:video" content="https://video.fhan14-3.fna.fbcdn.net/v/t2/test.mp4?oh=123" />
+          <meta property="og:image" content="https://scontent.fhan.fbcdn.net/thumb.jpg" />
+        </head></html>
+      `;
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/123456',
+        html: sampleHtml,
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; item: { videoUrl: string; title: string; source: string } };
+      expect(data.ok).toBe(true);
+      expect(data.item.videoUrl).toBe('https://video.fhan14-3.fna.fbcdn.net/v/t2/test.mp4?oh=123');
+      expect(data.item.title).toBe('Test Reel VN');
+      expect(data.item.source).toBe('Facebook');
+
+      // Verify feed contains this item
+      const feedRes = await worker.fetch(new Request(`https://feed.example.com/feed?code=${CODE}`), testEnv);
+      const feedData = (await json(feedRes)) as { items: Array<{ videoUrl: string }> };
+      expect(feedData.items.length).toBe(1);
+      expect(feedData.items[0].videoUrl).toBe('https://video.fhan14-3.fna.fbcdn.net/v/t2/test.mp4?oh=123');
+    });
+  });
 });
+

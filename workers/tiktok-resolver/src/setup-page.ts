@@ -8,25 +8,39 @@ export function escapeJs(value: string): string {
 
 export function renderSetupPage(code: string, workerUrl: string): string {
   return `<!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ShortVideo TV Setup</title>
+  <title>ShortVideo TV Setup - ${escapeHtml(code)}</title>
   <style>
-    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#070707;color:#f4f4f4;font-family:Arial,sans-serif}
-    main{width:min(92vw,540px);background:#121212;border:1px solid #2a2a2a;border-radius:14px;padding:24px}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#070707;color:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px 0;box-sizing:border-box}
+    main{width:min(92vw,560px);background:#121212;border:1px solid #2a2a2a;border-radius:16px;padding:24px;box-sizing:border-box}
     h1{margin:0 0 4px;font-size:26px;letter-spacing:-.03em}
-    .sub{color:#8a8a8a;font-size:14px;margin-bottom:20px}
-    .code{font-size:28px;color:#e94560;font-weight:700;letter-spacing:4px;margin-bottom:20px;text-align:center}
+    .sub{color:#8a8a8a;font-size:14px;margin-bottom:18px}
+    .code-box{background:#181818;border:1px dashed #e94560;border-radius:12px;padding:12px;text-align:center;margin-bottom:20px}
+    .code-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:1px}
+    .code{font-size:32px;color:#e94560;font-weight:800;letter-spacing:6px;margin-top:4px}
     label{display:block;margin:14px 0 6px;color:#a7a7a7;font-size:14px}
-    input,button{width:100%;border-radius:10px;border:1px solid #333;background:#0d0d0d;color:#f4f4f4;padding:0 12px;font-size:16px;box-sizing:border-box}
+    input,button,textarea{width:100%;border-radius:10px;border:1px solid #333;background:#0d0d0d;color:#f4f4f4;padding:0 12px;font-size:15px;box-sizing:border-box}
     input{height:46px}
-    button{margin-top:10px;height:48px;cursor:pointer;font-weight:700;font-size:17px}
-    .btn-primary{background:#e94560;border-color:#e94560;color:#fff}
+    textarea{padding:10px 12px;font-family:monospace;font-size:13px;resize:vertical}
+    button{margin-top:10px;height:48px;cursor:pointer;font-weight:700;font-size:16px;border:none;transition:0.15s ease}
+    .btn-primary{background:#e94560;color:#fff}
     .btn-primary:hover{background:#d63c55}
-    .btn-secondary{background:#1f6feb;border-color:#2f81f7;color:#fff}
+    .btn-secondary{background:#1f6feb;color:#fff}
     .btn-secondary:hover{background:#1a5fc9}
+    .btn-ios{background:#30d158;color:#000;font-weight:700}
+    .btn-ios:hover{background:#28b84c}
+    .btn-copy{display:inline-block;width:auto;height:auto;padding:4px 10px;font-size:12px;background:#242424;color:#58a6ff;border:1px solid #333;border-radius:6px;cursor:pointer;margin-left:8px;font-weight:normal}
+    .btn-copy:hover{background:#333}
+    .card-ios{background:linear-gradient(180deg, #161b22 0%, #0d1117 100%);border:1px solid #30363d;border-radius:12px;padding:16px;margin-bottom:20px}
+    .ios-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .ios-tag{background:#238636;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase}
+    .ios-title{font-size:16px;font-weight:700;color:#fff}
+    .ios-step{font-size:13px;color:#c9d1d9;line-height:1.6;margin-bottom:10px;padding-left:4px}
+    .ios-step strong{color:#58a6ff}
+    .ios-code{background:#000;padding:4px 8px;border-radius:6px;font-family:monospace;font-size:12px;color:#7ee787;word-break:break-all;display:inline-block;margin-top:4px}
     .msg{margin-top:14px;color:#8a8a8a;font-size:14px;min-height:22px}
     .info{color:#6a6a6a;font-size:13px;margin-top:18px;line-height:1.5;border-top:1px solid #222;padding-top:16px}
     .badge{display:inline-block;background:#222;padding:2px 10px;border-radius:6px;font-size:12px;margin-right:6px}
@@ -37,49 +51,106 @@ export function renderSetupPage(code: string, workerUrl: string): string {
     #suggestions .sg-item{padding:4px 0;border-bottom:1px solid #1a1a1a;font-size:13px;color:#8a8a8a}
     #suggestions .sg-item a{color:#4caf50;text-decoration:none}
     hr{border:0;border-top:1px solid #222;margin:18px 0}
-    #list .item{padding:4px 0;border-bottom:1px solid #1a1a1a}
+    #list .item{padding:6px 0;border-bottom:1px solid #1a1a1a}
     #list .idx{color:#555}
     #list .src{color:#8a8a8a;font-size:12px}
     #list .ttl{color:#ccc}
+    details summary{cursor:pointer;color:#58a6ff;font-size:14px;margin-bottom:8px}
   </style>
 </head>
 <body>
   <main>
     <h1>ShortVideo TV</h1>
-    <div class="sub">Send videos to your TV</div>
-    <div class="code">${escapeHtml(code)}</div>
+    <div class="sub">Gửi video Facebook / Reels lên TV</div>
+    <div class="code-box">
+      <div class="code-label">Mã kết nối TV của bạn</div>
+      <div class="code">${escapeHtml(code)}</div>
+    </div>
 
+    <!-- IPHONE SHORTCUT SECTION -->
+    <div class="card-ios">
+      <div class="ios-header">
+        <span class="ios-tag">Tốc độ cao 190 Mbps</span>
+        <span class="ios-title">⚡ Dành cho iPhone: Phím tắt 1-chạm</span>
+      </div>
+      <div class="ios-step" style="color:#aaa;font-size:13px">
+        Facebook cấp CDN riêng theo vị trí của người gửi. Khi gửi trực tiếp từ iPhone tại VN, video sẽ kéo từ <strong>CDN Hà Nội / Sài Gòn (190 Mbps)</strong> thay vì server Mỹ (1 Mbps), loại bỏ 100% tình trạng giật lag xoay vòng!
+      </div>
+      
+      <details>
+        <summary>👉 Bấm vào đây để xem hướng dẫn tạo Phím tắt (chỉ mất 30 giây)</summary>
+        <div style="margin-top:10px;background:#0d1117;border-radius:8px;padding:12px">
+          <div class="ios-step">
+            <strong>Bước 1:</strong> Mở app <strong>Phím tắt (Shortcuts)</strong> trên iPhone -> bấm dấu <strong>+</strong> -> đặt tên là <code>Gửi lên TV</code>.
+          </div>
+          <div class="ios-step">
+            <strong>Bước 2:</strong> Bấm biểu tượng <strong>(i)</strong> ở thanh dưới cùng -> bật <strong>Hiện trong Bảng chia sẻ</strong> (Nhận: URL, Văn bản).
+          </div>
+          <div class="ios-step">
+            <strong>Bước 3:</strong> Thêm tác vụ: <strong>Nhận nội dung của URL</strong> (Get Contents of URL):<br>
+            - URL: chọn biến <code>Đầu vào của phím tắt</code> (Shortcut Input).
+          </div>
+          <div class="ios-step">
+            <strong>Bước 4:</strong> Thêm tác vụ: <strong>Nhận nội dung của URL</strong>:<br>
+            - URL: <span class="ios-code">${escapeHtml(workerUrl)}/submit-html</span> <button class="btn-copy" onclick="copyText('${escapeJs(workerUrl)}/submit-html')">Sao chép</button><br>
+            - Phương thức (Method): <strong>POST</strong><br>
+            - Nội dung yêu cầu (Body): <strong>JSON</strong><br>
+            - Thêm 3 trường (Khóa):<br>
+              &nbsp;&bull; <code>code</code> (Văn bản) = <strong>${escapeHtml(code)}</strong> <button class="btn-copy" onclick="copyText('${escapeJs(code)}')">Sao chép</button><br>
+              &nbsp;&bull; <code>url</code> (Văn bản) = <code>Đầu vào của phím tắt</code><br>
+              &nbsp;&bull; <code>html</code> (Văn bản) = <code>Nội dung của URL</code> (kết quả từ Bước 3)
+          </div>
+          <div class="ios-step">
+            <strong>Bước 5:</strong> Thêm tác vụ: <strong>Hiển thị thông báo</strong>: <code>Đã gửi lên TV!</code>
+          </div>
+          <div class="ios-step" style="color:#7ee787;margin-top:8px">
+            ✨ Xong! Khi xem Facebook, chỉ cần bấm <strong>Chia sẻ -> Thêm -> Gửi lên TV</strong> là TV phát tức thì!
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- QUICK FB URL FORM -->
     <form id="formFacebook">
-      <label>Facebook Reel URL <span class="badge badge-facebook">resolved on TV</span></label>
+      <label>Facebook Reel URL <span class="badge badge-facebook">tự động bóc link</span></label>
       <input id="facebookUrl" type="url" placeholder="https://www.facebook.com/reel/123456" autofocus>
-      <button class="btn-secondary" type="submit">Send to TV</button>
+      <button class="btn-secondary" type="submit">Gửi lên TV</button>
     </form>
 
     <hr>
 
+    <!-- DIRECT VIDEO URL -->
     <form id="formDirect">
-      <label>Direct video URL <span class="badge badge-direct">manual</span></label>
+      <label>Direct video URL (.mp4) <span class="badge badge-direct">thủ công</span></label>
       <input id="directUrl" type="url" placeholder="https://example.com/video.mp4">
-      <label>Title (optional)</label>
-      <input id="directTitle" type="text" placeholder="My video">
-      <button class="btn-primary" type="submit">Send to TV</button>
+      <label>Tiêu đề (tùy chọn)</label>
+      <input id="directTitle" type="text" placeholder="Tên video...">
+      <button class="btn-primary" type="submit">Gửi lên TV</button>
     </form>
 
     <hr>
-    <button id="clearBtn" style="background:#c62828;border-color:#c62828;color:#fff">Clear Feed</button>
+    <button id="clearBtn" style="background:#c62828;color:#fff">Xóa danh sách phát trên TV</button>
     <div id="suggestions"></div>
     <div style="margin-top:16px">
-      <label style="color:#a7a7a7;font-size:14px;margin-bottom:8px;display:block">Current feed:</label>
+      <label style="color:#a7a7a7;font-size:14px;margin-bottom:8px;display:block">Danh sách đang phát trên TV:</label>
       <div id="list" style="font-size:14px;color:#ccc;line-height:1.8"></div>
     </div>
 
     <div id="msg" class="msg"></div>
-    <div class="info">Send as many videos as you like. They appear on the TV within seconds.</div>
+    <div class="info">Video bạn gửi sẽ xuất hiện trên TV trong vòng vài giây.</div>
   </main>
   <script>
     var baseUrl = '${escapeJs(workerUrl)}';
     var deviceCode = '${escapeJs(code)}';
     var msgEl = document.getElementById('msg');
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(function () {
+        setMsg('Đã sao chép vào bộ nhớ tạm!', true);
+      }).catch(function () {
+        setMsg('Không thể sao chép tự động', false);
+      });
+    }
 
     function setMsg(text, ok) {
       msgEl.textContent = text;
@@ -87,7 +158,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
     }
 
     function send(body) {
-      setMsg('Sending...');
+      setMsg('Đang gửi...');
       return fetch(baseUrl + '/submit', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -99,9 +170,9 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       e.preventDefault();
       var url = document.getElementById('facebookUrl').value.trim();
       if (!url) return;
-      setMsg('Sending Facebook Reel...');
+      setMsg('Đang gửi Facebook Reel...');
       send({ code: deviceCode, url: url }).then(function (data) {
-        setMsg(data.ok ? 'Sent! Video added to TV.' : 'Failed: ' + (data.error || 'unknown'), !!data.ok);
+        setMsg(data.ok ? 'Đã gửi thành công lên TV!' : 'Lỗi: ' + (data.error || 'không rõ'), !!data.ok);
         if (data.ok) { loadList(); loadSuggestions(); }
       });
     });
@@ -110,23 +181,23 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       e.preventDefault();
       var videoUrl = document.getElementById('directUrl').value.trim();
       if (!videoUrl) return;
-      setMsg('Sending...');
+      setMsg('Đang gửi...');
       send({
         code: deviceCode,
         videoUrl: videoUrl,
         title: document.getElementById('directTitle').value.trim() || undefined
       }).then(function (data) {
-        setMsg(data.ok ? 'Sent! Video added to TV.' : 'Failed: ' + (data.error || 'unknown'), !!data.ok);
+        setMsg(data.ok ? 'Đã gửi thành công lên TV!' : 'Lỗi: ' + (data.error || 'không rõ'), !!data.ok);
       });
     });
 
     document.getElementById('clearBtn').addEventListener('click', function () {
-      if (!confirm('Clear all videos from TV feed?')) return;
-      setMsg('Clearing...');
+      if (!confirm('Bạn có chắc muốn xóa tất cả video trên TV?')) return;
+      setMsg('Đang xóa...');
       fetch(baseUrl + '/feed?code=' + deviceCode, { method: 'DELETE' })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          setMsg(data.ok ? 'Feed cleared!' : 'Failed', !!data.ok);
+          setMsg(data.ok ? 'Đã xóa sạch danh sách!' : 'Lỗi', !!data.ok);
           loadList();
         });
     });
@@ -137,7 +208,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
         .then(function (data) {
           var el = document.getElementById('list');
           if (!data.items || !data.items.length) {
-            el.innerHTML = '<em>Feed is empty.</em>';
+            el.innerHTML = '<em>Danh sách trống.</em>';
             return;
           }
           el.innerHTML = data.items.filter(function (it) {
@@ -149,7 +220,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
               '<span class="ttl">' + (it.title || it.sourceUrl) + '</span>' +
             '</div>';
           }).join('');
-          if (!el.innerHTML) el.innerHTML = '<em>Feed is empty.</em>';
+          if (!el.innerHTML) el.innerHTML = '<em>Danh sách trống.</em>';
         });
     }
 
@@ -162,7 +233,7 @@ export function renderSetupPage(code: string, workerUrl: string): string {
             el.innerHTML = '';
             return;
           }
-          el.innerHTML = '<hr><label style="color:#4caf50;font-size:14px;margin-bottom:8px;display:block"><span class="badge badge-suggest">' + data.items.length + ' suggestions</span></label>' +
+          el.innerHTML = '<hr><label style="color:#4caf50;font-size:14px;margin-bottom:8px;display:block"><span class="badge badge-suggest">' + data.items.length + ' gợi ý</span></label>' +
             data.items.map(function (it, i) {
               return '<div class="sg-item">' + (i + 1) + '. <a href="' + it.sourceUrl + '" target="_blank">' + (it.title || it.sourceUrl.slice(0, 60)) + '</a></div>';
             }).join('');
@@ -175,3 +246,4 @@ export function renderSetupPage(code: string, workerUrl: string): string {
 </body>
 </html>`;
 }
+

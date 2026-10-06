@@ -32,6 +32,49 @@ function extractOgMeta(html: string, property: string): string | null {
   return null;
 }
 
+function extractJsonString(html: string, key: string): string | null {
+  const p = new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`, 'i');
+  const m = html.match(p);
+  if (m) {
+    return decodeHtmlEntities(m[1].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, ''));
+  }
+  return null;
+}
+
+export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
+  const videoUrl =
+    extractOgMeta(html, 'og:video:secure_url') ||
+    extractOgMeta(html, 'og:video:url') ||
+    extractOgMeta(html, 'og:video') ||
+    extractJsonString(html, 'browser_native_hd_url') ||
+    extractJsonString(html, 'browser_native_sd_url') ||
+    extractJsonString(html, 'playable_url_quality_hd') ||
+    extractJsonString(html, 'playable_url');
+
+  if (!videoUrl) return null;
+
+  const canonicalUrl = extractOgMeta(html, 'og:url') || url;
+  const title = extractOgMeta(html, 'og:title') || 'Facebook Video';
+  const thumbnail = extractOgMeta(html, 'og:image');
+  const videoId =
+    canonicalUrl.match(/\/reel\/(\d+)/)?.[1] ||
+    canonicalUrl.match(/\/v\/(\w+)/)?.[1] ||
+    canonicalUrl.match(/\/r\/(\w+)/)?.[1] ||
+    canonicalUrl.match(/\/videos\/(\d+)/)?.[1] ||
+    url.match(/\/reel\/(\d+)/)?.[1] ||
+    url.match(/\/v\/(\w+)/)?.[1] ||
+    url.match(/\/r\/(\w+)/)?.[1] ||
+    '';
+
+  return {
+    videoUrl,
+    title,
+    thumbnailUrl: thumbnail || null,
+    author: extractOgMeta(html, 'og:site_name') || 'Facebook',
+    videoId,
+  };
+}
+
 export async function resolveFacebookUrl(url: string): Promise<ResolvedItem | null> {
   try {
     const res = await fetch(url, {
@@ -44,25 +87,7 @@ export async function resolveFacebookUrl(url: string): Promise<ResolvedItem | nu
     });
     if (!res.ok) return null;
     const html = await res.text();
-
-    const videoUrl =
-      extractOgMeta(html, 'og:video:secure_url') ||
-      extractOgMeta(html, 'og:video:url') ||
-      extractOgMeta(html, 'og:video');
-
-    if (!videoUrl) return null;
-
-    const title = extractOgMeta(html, 'og:title') || 'Facebook Reel';
-    const thumbnail = extractOgMeta(html, 'og:image');
-    const videoId = url.match(/\/reel\/(\d+)/)?.[1] || '';
-
-    return {
-      videoUrl,
-      title,
-      thumbnailUrl: thumbnail || null,
-      author: extractOgMeta(html, 'og:site_name') || 'Facebook',
-      videoId,
-    };
+    return parseFacebookHtml(html, url);
   } catch {
     return null;
   }
