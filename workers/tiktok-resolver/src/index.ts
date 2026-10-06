@@ -339,15 +339,33 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   }
 
   const htmlContent = typeof body.html === 'string' ? body.html : '';
-  const platformUrl = typeof body.url === 'string' ? body.url.trim() : '';
+  const rawUrl = typeof body.url === 'string' ? body.url.trim() : '';
+  const cleanUrlMatch = rawUrl.match(/https?:\/\/[^\s"'<>]+/);
+  const platformUrl = cleanUrlMatch ? cleanUrlMatch[0] : rawUrl;
 
-  if (!htmlContent) {
-    return json({ error: 'Missing "html" field' }, 400);
+  if (!htmlContent && !platformUrl) {
+    return json({ error: 'Missing "html" or "url" field' }, 400);
   }
 
-  const resolved = parseFacebookHtml(htmlContent, platformUrl);
+  let resolved = htmlContent ? parseFacebookHtml(htmlContent, platformUrl) : null;
+
+  if ((!resolved || !resolved.videoUrl) && platformUrl && isValidUrl(platformUrl)) {
+    try {
+      const fallback = await callFallbackResolver(env, platformUrl);
+      if (fallback && fallback.videoUrl) {
+        resolved = {
+          videoUrl: fallback.videoUrl,
+          title: fallback.title || 'Facebook Video',
+          thumbnailUrl: fallback.thumbnailUrl || null,
+          author: 'Facebook',
+          videoId: '',
+        };
+      }
+    } catch {}
+  }
+
   if (!resolved || !resolved.videoUrl) {
-    return json({ error: 'Could not extract video from HTML' }, 422);
+    return json({ error: 'Could not extract video from HTML or URL' }, 422);
   }
 
   const feedItem: FeedItem = {

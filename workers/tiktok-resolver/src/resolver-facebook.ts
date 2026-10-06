@@ -41,6 +41,15 @@ function extractJsonString(html: string, key: string): string | null {
   return null;
 }
 
+function extractDirectFbcdnMp4(html: string): string | null {
+  const matches = html.match(/https?:[^\s"'<>]+\.fbcdn\.net[^\s"'<>]+\.mp4[^\s"'<>]*/gi);
+  if (matches && matches.length > 0) {
+    const u = matches[0].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, '');
+    return decodeHtmlEntities(u);
+  }
+  return null;
+}
+
 export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
   const videoUrl =
     extractOgMeta(html, 'og:video:secure_url') ||
@@ -49,7 +58,8 @@ export function parseFacebookHtml(html: string, url: string): ResolvedItem | nul
     extractJsonString(html, 'browser_native_hd_url') ||
     extractJsonString(html, 'browser_native_sd_url') ||
     extractJsonString(html, 'playable_url_quality_hd') ||
-    extractJsonString(html, 'playable_url');
+    extractJsonString(html, 'playable_url') ||
+    extractDirectFbcdnMp4(html);
 
   if (!videoUrl) return null;
 
