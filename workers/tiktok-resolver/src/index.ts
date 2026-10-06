@@ -561,20 +561,22 @@ export default {
 
       const url = new URL(request.url);
 
-      if (request.method === 'GET' && url.pathname === '/setup') return handleSetup(url);
-      if (request.method === 'GET' && (url.pathname === '/shortcut' || url.pathname === '/download-shortcut')) {
+      const isGetOrHead = request.method === 'GET' || request.method === 'HEAD';
+
+      if (isGetOrHead && url.pathname === '/setup') return handleSetup(url);
+      if (isGetOrHead && (url.pathname === '/shortcut' || url.pathname === '/download-shortcut')) {
         return handleDownloadShortcut(url);
       }
       if (request.method === 'POST' && url.pathname === '/submit') return handleSubmit(request, env);
       if (request.method === 'POST' && url.pathname === '/submit-html') return handleSubmitHtml(request, env);
-      if (request.method === 'GET' && url.pathname === '/feed') return handleFeed(request, env);
+      if (isGetOrHead && url.pathname === '/feed') return handleFeed(request, env);
       if (request.method === 'DELETE' && url.pathname === '/feed') return handleDeleteFeed(request, env);
-      if (request.method === 'GET' && url.pathname === '/suggestions') return handleSuggestions(request, env);
+      if (isGetOrHead && url.pathname === '/suggestions') return handleSuggestions(request, env);
       if (request.method === 'DELETE' && url.pathname === '/suggestions') return handleDeleteSuggestions(request, env);
-      if (request.method === 'GET' && url.pathname === '/resolve') return handleResolve(request, env);
-      if (request.method === 'GET' && url.pathname === '/resolve-debug') return handleResolveDebug(request);
-      if (request.method === 'GET' && url.pathname === '/proxy') return handleProxy(request, env);
-      if (request.method === 'GET' && url.pathname === '/stream') return handleStream(request);
+      if (isGetOrHead && url.pathname === '/resolve') return handleResolve(request, env);
+      if (isGetOrHead && url.pathname === '/resolve-debug') return handleResolveDebug(request);
+      if (isGetOrHead && url.pathname === '/proxy') return handleProxy(request, env);
+      if (isGetOrHead && url.pathname === '/stream') return handleStream(request);
 
       return json({ error: 'Not found' }, 404);
     } catch (err) {
