@@ -481,6 +481,7 @@
   var lastBufEnd = -1;
   var lastBufTs = 0;
   var intakeEma = 0;
+  var currentCdnDomain = '';
 
   function handleMediaAttemptFailure(item, requestId, attemptId, error) {
     if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId) return;
@@ -565,6 +566,7 @@
     video.addEventListener('error', currentMediaErrorHandler);
     video.src = sourceUrl;
     video.load();
+    try { currentCdnDomain = new URL(sourceUrl).hostname; } catch (_) { currentCdnDomain = ''; }
 
     if (!shouldPlay) return;
     var result = video.play();
@@ -783,6 +785,7 @@
         if (!isPlayerOpen || requestId !== playRequestId || !useAv) return;
         if (avPrepareTimer) { try { clearTimeout(avPrepareTimer); } catch (_) {} avPrepareTimer = null; }
         try { avDurSec = (api.getDuration() || 0) / 1000; } catch (_) {}
+        try { currentCdnDomain = new URL(sourceUrl).hostname; } catch (_) { currentCdnDomain = ''; }
         try {
           api.play();
           avPaused = false;
@@ -876,7 +879,7 @@
         var c = avCurSec || 0;
         var d = avDurSec || 0;
         netStatsEl.style.color = '#4caf50';
-        netStatsEl.textContent = tag + ' | T ' + formatTime(c) + '/' + (d ? formatTime(d) : '?') + ' | stall ' + stallCount;
+        netStatsEl.textContent = tag + ' | ' + currentCdnDomain + ' | T ' + formatTime(c) + '/' + (d ? formatTime(d) : '?') + ' | stall ' + stallCount;
       } catch (_) {}
       return;
     }
@@ -910,7 +913,7 @@
       else if (intakeEma >= 0) color = '#e94560';
       var res = (video.videoWidth || 0) + 'x' + (video.videoHeight || 0);
       netStatsEl.style.color = color;
-      netStatsEl.textContent = tag + ' | BUF ' + bufText + ' | IN ' + inText + ' | ' + res + ' | stall ' + stallCount;
+      netStatsEl.textContent = tag + ' | ' + currentCdnDomain + ' | BUF ' + bufText + ' | IN ' + inText + ' | ' + res + ' | stall ' + stallCount;
     } catch (_) {}
   }
 
