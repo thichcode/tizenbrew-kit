@@ -12,36 +12,30 @@ Tizen 3 TVs run an old WebKit browser that can't handle modern Facebook pages. I
 
 ## Remote Controls
 
-| Button | Action |
-|--------|--------|
-| ↑ ↓ | Navigate feed |
-| ← → | Navigate feed (in feed) / seek ∓10s (in player) |
-| OK / Enter | Play (in feed) / Pause-Resume (in player) |
-| ◁ Back | Close player, return to feed |
-| 🔴 Red button | Clear entire feed |
+| Button | Action (Feed) | Action (Player) |
+|--------|---------------|-----------------|
+| ↑ ↓ | Navigate items | **Toggle HUD / Net-stats overlay** |
+| ← → | Navigate items | Seek ∓10s |
+| OK / Enter | Play selected video | Pause / Resume |
+| ◁ Back / Escape | Exit | Close player, return to feed |
+| ℹ️ Info / 🟢 Green | - | **Toggle HUD / Net-stats overlay** |
+| 🔴 Red button | Clear entire feed | - |
 
-The overlay poll is opt-in and off by default. Flip `NETSTATS_ENABLED` to `true` and rebuild while diagnosing; do not ship it enabled on Tizen 3 hardware.
+## HUD & Net-Stats Overlay (v1.2.21+)
 
-## Playback Engines
-
-The player picks an engine per item and falls back automatically.
-
-| Engine | When | Notes |
-|---|---|---|
-| AVPlay API | TV exposes `window.webapis.avplay` | Native Samsung decoder, larger default buffer, no seek penalty |
-| `<video>` | Any failure above | `prepareAsync` error or 15s timeout drops back here |
-
-Android TV builds short-circuit to `window.AndroidBridge.openVideo` before either web engine runs.
-
-### Net-stats overlay (disabled by default)
-
-`NETSTATS_ENABLED` in `src/inject.ts` is `false`. When enabled, a bottom-left overlay reports which engine is live, buffer depth and load rate:
-
-- `AVPLAY | T 12.3s/38.9s | stall 0` — native engine
-- `BUF FULL | IN -- | 360x640 | stall 0` — web engine, file fully buffered
-- `BUF 6.2s | IN 1.30x | 720x960 | stall 0` — seconds buffered and load rate vs playback speed
-
-It polls `video.buffered` once per second, which can stall old Tizen WebKit mid-decode, so leave it off unless you are diagnosing playback.
+The player includes an active HUD board enabled by default:
+- **Bottom-left diagnostic HUD (`#net-stats`)**:
+  - `v1.2.21 AVPLAY-OK | T 12.3s/38.9s | stall 0` — Native Samsung AVPlay engine with active playback time, total duration, and hardware stall counter.
+  - `v1.2.21 WebPlayer | BUF 6.2s | IN 1.30x | 720x960 | stall 0` — Web engine fallback showing buffered seconds, download intake rate vs playback speed, real video resolution, and stall counter.
+- **Bottom player overlay (`#player-overlay`)**:
+  - Video title with contrast shadow.
+  - Formatted numerical time readout: `0:15 / 1:30` (or `--:--` if duration is not known).
+  - Seek bar fill (`#seek-bar-fill`).
+  - Remote shortcut guide and engine badge `[AVPlay • 2m] ▲/▼: HUD   ← →: Seek   OK: pause   Back: feed`.
+- **Hardware Layering & Stacking Context**:
+  - On Samsung Tizen 3, AVPlay renders via a hardware video plane `<object type="application/avplayer">`.
+  - In v1.2.21+, the `<object>` element is prepended at the bottom of the DOM tree (`zIndex: 0`), and overlay elements have explicit high `z-index` (HUD: `35`, seek bar: `25`, overlay: `20`) so video playback never covers the HUD or controls.
+- **Toggle anytime**: Press **↑ (Up)**, **↓ (Down)**, **Info**, or **Green** on your TV remote to hide or show the HUD overlay.
 
 ## Playback Fallback Chain
 
