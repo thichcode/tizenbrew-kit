@@ -1,6 +1,7 @@
 import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
 import { resolveFacebookUrl, parseFacebookHtml } from './resolver-facebook';
 import { renderSetupPage } from './setup-page';
+import { generateShortcutXml } from './shortcut-builder';
 
 interface FeedItem {
   id: string;
@@ -540,6 +541,19 @@ async function handleDeleteSuggestions(request: Request, env: Env): Promise<Resp
   return json({ ok: true });
 }
 
+function handleDownloadShortcut(url: URL): Response {
+  const code = url.searchParams.get('code') || 'TVWLQISO';
+  const xml = generateShortcutXml(code, WORKER_URL);
+  return new Response(xml, {
+    status: 200,
+    headers: {
+      'content-type': 'application/x-ios-shortcut; charset=utf-8',
+      'content-disposition': `attachment; filename="GuiLenTV_${code}.shortcut"`,
+      'access-control-allow-origin': '*',
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
@@ -548,6 +562,9 @@ export default {
       const url = new URL(request.url);
 
       if (request.method === 'GET' && url.pathname === '/setup') return handleSetup(url);
+      if (request.method === 'GET' && (url.pathname === '/shortcut' || url.pathname === '/download-shortcut')) {
+        return handleDownloadShortcut(url);
+      }
       if (request.method === 'POST' && url.pathname === '/submit') return handleSubmit(request, env);
       if (request.method === 'POST' && url.pathname === '/submit-html') return handleSubmitHtml(request, env);
       if (request.method === 'GET' && url.pathname === '/feed') return handleFeed(request, env);

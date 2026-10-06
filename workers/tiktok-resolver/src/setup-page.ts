@@ -76,9 +76,22 @@ export function renderSetupPage(code: string, workerUrl: string): string {
       <div class="ios-step" style="color:#aaa;font-size:13px">
         Facebook cấp CDN riêng theo vị trí của người gửi. Khi gửi trực tiếp từ iPhone tại VN, video sẽ kéo từ <strong>CDN Hà Nội / Sài Gòn (190 Mbps)</strong> thay vì server Mỹ (1 Mbps), loại bỏ 100% tình trạng giật lag xoay vòng!
       </div>
+
+      <div style="display:flex;gap:10px;margin:14px 0">
+        <a href="${workerUrl}/download-shortcut?code=${escapeHtml(code)}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#30d158;color:#000;text-decoration:none;font-weight:700;font-size:15px;height:46px;border-radius:10px">
+          <span>📥</span> Tải Phím tắt (.shortcut)
+        </a>
+        <a href="shortcuts://create-shortcut" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#242424;color:#58a6ff;border:1px solid #333;text-decoration:none;font-weight:600;font-size:14px;height:46px;border-radius:10px">
+          <span>🚀</span> Mở app Phím tắt
+        </a>
+      </div>
+      <div style="font-size:12px;color:#8b949e;margin-bottom:12px">
+        💡 <strong>Cách 1:</strong> Bấm <em>Tải Phím tắt</em> $\rightarrow$ mở file trong mục Tải về của iPhone để thêm tự động.<br>
+        💡 <strong>Cách 2:</strong> Nếu iOS hỏi quyền hoặc chưa quen nhập file, bấm vào hướng dẫn bên dưới để tự tạo trong 30 giây!
+      </div>
       
       <details>
-        <summary>👉 Bấm vào đây để xem hướng dẫn tạo Phím tắt (chỉ mất 30 giây)</summary>
+        <summary>👉 Hướng dẫn tự tạo Phím tắt thủ công (30 giây)</summary>
         <div style="margin-top:10px;background:#0d1117;border-radius:8px;padding:12px">
           <div class="ios-step">
             <strong>Bước 1:</strong> Mở app <strong>Phím tắt (Shortcuts)</strong> trên iPhone -> bấm dấu <strong>+</strong> -> đặt tên là <code>Gửi lên TV</code>.

@@ -352,5 +352,17 @@ describe('shortvideo-feed worker', () => {
       expect(feedData.items[0].videoUrl).toBe('https://video.fhan14-3.fna.fbcdn.net/v/t2/test.mp4?oh=123');
     });
   });
+
+  describe('GET /download-shortcut', () => {
+    it('returns .shortcut XML file with code', async () => {
+      const res = await worker.fetch(new Request(`https://feed.example.com/download-shortcut?code=${CODE}`), env());
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('application/x-ios-shortcut');
+      const text = await res.text();
+      expect(text).toContain(CODE);
+      expect(text).toContain('is.workflow.actions.downloadurl');
+      expect(text).toContain('submit-html');
+    });
+  });
 });
 
