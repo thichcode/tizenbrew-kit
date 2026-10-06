@@ -37,6 +37,7 @@
   var playerLoadingEl = document.getElementById('player-loading');
   var video = document.getElementById('video');
   var playerTitleEl = document.getElementById('player-title');
+  var playerHelpEl = document.getElementById('player-help');
   var seekBarFill = document.getElementById('seek-bar-fill');
   var seekIndicator = document.getElementById('seek-indicator');
   var setupEl = document.getElementById('setup');
@@ -437,6 +438,7 @@
     try { document.body.style.backgroundColor = '#070707'; } catch (_) {}
     if (playerEl) { try { playerEl.style.backgroundColor = '#000'; } catch (_) {} }
     if (video) { try { video.style.display = ''; } catch (_) {} }
+    if (playerHelpEl) playerHelpEl.textContent = '← → Seek \u00a0 OK: pause \u00a0 Back: feed';
     playRequestId += 1;
     mediaAttemptId += 1;
     mediaFailureScheduleId += 1;
@@ -601,7 +603,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.19';
+  var APP_VERSION = '1.2.20';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -612,11 +614,35 @@
 
   function avApi() {
     try {
-      if (typeof window !== 'undefined' && window.webapis && window.webapis.avplay) {
-        return window.webapis.avplay;
+      if (typeof window !== 'undefined') {
+        if (window.webapis && window.webapis.avplay) return window.webapis.avplay;
+        if (window.parent && window.parent.webapis && window.parent.webapis.avplay) return window.parent.webapis.avplay;
+        if (window.top && window.top.webapis && window.top.webapis.avplay) return window.top.webapis.avplay;
       }
     } catch (_) {}
     return null;
+  }
+
+  function detectVideoDuration(item, sourceUrl) {
+    if (item && typeof item.duration === 'number' && item.duration > 0) return item.duration;
+    try {
+      if (typeof sourceUrl === 'string') {
+        var m = sourceUrl.match(/duration_s%22%3A(\d+)/i) || sourceUrl.match(/"duration_s":(\d+)/i);
+        if (m) return parseInt(m[1], 10);
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  function updatePlayerBadge(engine, durSec) {
+    if (!playerHelpEl) return;
+    var durLabel = '';
+    if (durSec > 0) {
+      var mins = Math.round(durSec / 60);
+      durLabel = mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60) + 'm' : mins + 'm';
+    }
+    var tag = '[' + engine + (durLabel ? ' • ' + (durSec > 300 ? 'Phim ' : '') + durLabel : '') + '] ';
+    playerHelpEl.textContent = tag + '← → Seek \u00a0 OK: pause \u00a0 Back: feed';
   }
 
   function avCloseQuiet() {
@@ -661,6 +687,8 @@
     try { document.body.style.backgroundColor = '#070707'; } catch (_) {}
     if (playerEl) { try { playerEl.style.backgroundColor = '#000'; } catch (_) {} }
     if (video) { try { video.style.display = ''; } catch (_) {} }
+    var durGuess = detectVideoDuration(item, sourceUrl);
+    updatePlayerBadge('WebPlayer', durGuess);
     if (playerLoadingEl) {
       playerLoadingEl.style.display = 'block';
       playerLoadingEl.style.color = '#888';
@@ -690,16 +718,22 @@
       } catch (_) {}
       api.open(sourceUrl);
       api.setDisplayRect(0, 0, w, h);
+
+      var durGuess = detectVideoDuration(item, sourceUrl);
+      var isLongVideo = durGuess > 300;
+      var bufForPlay = isLongVideo ? 20 : 4;
+      var bufForResume = isLongVideo ? 30 : 8;
+
       try {
         if (typeof api.setBufferingParam === 'function') {
-          try { api.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', 4); } catch (_) {}
-          try { api.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', 8); } catch (_) {}
+          try { api.setBufferingParam('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_SIZE_IN_SECOND', bufForPlay); } catch (_) {}
+          try { api.setBufferingParam('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_SIZE_IN_SECOND', bufForResume); } catch (_) {}
         }
       } catch (_) {}
       try {
         if (typeof api.setBufferingParamWithMode === 'function') {
-          try { api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_MODE_SIZE', 2048); } catch (_) {}
-          try { api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_MODE_SIZE', 4096); } catch (_) {}
+          try { api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_PLAY', 'PLAYER_BUFFER_MODE_SIZE', isLongVideo ? 8192 : 2048); } catch (_) {}
+          try { api.setBufferingParamWithMode('PLAYER_BUFFER_FOR_RESUME', 'PLAYER_BUFFER_MODE_SIZE', isLongVideo ? 16384 : 4096); } catch (_) {}
         }
       } catch (_) {}
       api.setListener({
@@ -707,7 +741,7 @@
           if (playerLoadingEl && isPlayerOpen && requestId === playRequestId) {
             playerLoadingEl.style.display = 'block';
             playerLoadingEl.style.color = '#888';
-            playerLoadingEl.textContent = 'Buffering...';
+            playerLoadingEl.textContent = isLongVideo ? 'Buffering (' + bufForPlay + 's cho phim dài)...' : 'Buffering...';
           }
         },
         onbufferingcomplete: function () {
@@ -743,6 +777,7 @@
           avFallbackToHtml(item, requestId, sourceUrl);
           return;
         }
+        updatePlayerBadge('AVPlay', durGuess);
         if (playerLoadingEl) playerLoadingEl.style.display = 'none';
         if (loadTimeout) clearTimeout(loadTimeout);
         try {
@@ -755,7 +790,7 @@
       });
       avPrepareTimer = setTimeout(function () {
         avFallbackToHtml(item, requestId, sourceUrl);
-      }, 15000);
+      }, 25000);
       return true;
     } catch (_) {
       avSupport = 'fail';
