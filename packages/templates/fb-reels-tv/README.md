@@ -37,6 +37,24 @@ The player includes an active HUD board enabled by default:
   - In v1.2.21+, the `<object>` element is prepended at the bottom of the DOM tree (`zIndex: 0`), and overlay elements have explicit high `z-index` (HUD: `35`, seek bar: `25`, overlay: `20`) so video playback never covers the HUD or controls.
 - **Toggle anytime**: Press **↑ (Up)**, **↓ (Down)**, **Info**, or **Green** on your TV remote to hide or show the HUD overlay.
 
+## Gửi video từ iPhone (iOS Shortcut)
+
+Ứng dụng hỗ trợ **Phím tắt iOS (Shortcut)** để gửi video Facebook Reels trực tiếp từ iPhone lên TV với 1 thao tác chia sẻ:
+
+### Ưu điểm vượt trội
+- **Tốc độ cao (CDN Việt Nam/Châu Á)**: Khi chia sẻ qua Safari/Shortcut trên iPhone, trang HTML được tải qua IP mạng Việt Nam. Cloudflare Worker bóc link trực tiếp CDN Facebook (`video-sin...`, `video-hkg...`), đạt tốc độ **~190 Mbps** (không bị bóp băng thông 1 Mbps như khi server Mỹ bóc link).
+- **Tự động cấu hình**: File Shortcut được máy chủ tạo động, tự động điền sẵn mã kết nối của tivi, không cần gõ mã thủ công.
+- **Tự động Fallback**: Nếu video ở chế độ riêng tư hoặc HTML không chứa luồng MP4 công khai, hệ thống tự động chuyển sang Fallback Resolver để bảo đảm video vẫn phát được trên TV.
+
+### Cách cài đặt & sử dụng
+1. **Cài đặt Phím tắt:**
+   - Mở **ShortVideo TV** trên tivi, quét mã QR hiển thị trên màn hình bằng camera iPhone (hoặc truy cập `https://shortvideo-feed.dvt-kisu.workers.dev/setup?code=<MÃ_TV>`).
+   - Nhấn nút **"📥 Tải iOS Shortcut tự động kết nối TV này"** (hoặc tải trực tiếp tại `https://shortvideo-feed.dvt-kisu.workers.dev/download-shortcut?code=<MÃ_TV>`).
+   - iPhone sẽ tự động mở ứng dụng **Phím tắt (Shortcuts)** $\rightarrow$ Bấm **Thêm phím tắt (Add Shortcut)**.
+2. **Sử dụng:**
+   - Khi đang xem Facebook Reels trên iPhone, bấm nút **Chia sẻ (Share)** $\rightarrow$ chọn **ShortVideo to TV** (hoặc chia sẻ liên kết tới phím tắt).
+   - Video sẽ lập tức xuất hiện và tự động phát trên màn hình tivi!
+
 ## Playback Fallback Chain
 
 Each item is attempted in order until one starts without a media error:
