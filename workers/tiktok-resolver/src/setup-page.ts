@@ -118,7 +118,10 @@ export function renderSetupPage(code: string, workerUrl: string): string {
               &nbsp;&bull; <code>html</code> (Văn bản) = <code>Nội dung của URL</code> (kết quả từ Bước 3)
           </div>
           <div class="ios-step">
-            <strong>Bước 5:</strong> Thêm tác vụ: <strong>Hiển thị thông báo</strong>: <code>Đã gửi lên TV!</code>
+            <strong>Bước 3b (khuyên dùng):</strong> Thêm tác vụ <strong>Nếu (If)</strong> ngay sau Bước 3, điều kiện: <code>Nội dung của URL</code> <strong>chứa</strong> <code>og:video</code>. Nhánh <em>Nếu không</em>: thêm <strong>Hiển thị cảnh báo</strong> nội dung <code>Không lấy được link video (thiếu User-Agent hoặc sai URL), dừng!</code> rồi thêm <strong>Dừng phím tắt</strong>. Cách này chặn submit rác (link Mỹ/404) ngay từ iPhone thay vì để TV phát link chậm.
+          </div>
+          <div class="ios-step">
+            <strong>Bước 5:</strong> Thay vì hiển thị cả JSON dài, thêm tác vụ <strong>Lấy giá trị từ điển</strong>: Khóa = <code>ketluan</code>, Từ điển = <code>Nội dung của URL</code> (kết quả POST), rồi <strong>Hiển thị</strong> giá trị đó. Màn hình sẽ chỉ hiện 1 dòng: <code>LINK VN (...) - nguon html</code> là xong, <code>LINK MY...</code> là còn lỗi.
           </div>
           <div class="ios-step" style="color:#7ee787;margin-top:8px">
             ✨ Xong! Khi xem Facebook, chỉ cần bấm <strong>Chia sẻ -> Thêm -> Gửi lên TV</strong> là TV phát tức thì!
