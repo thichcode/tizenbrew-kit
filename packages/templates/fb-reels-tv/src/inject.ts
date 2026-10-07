@@ -607,7 +607,7 @@
     return true;
   }
 
-  var APP_VERSION = '1.2.21';
+  var APP_VERSION = '1.2.22';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
