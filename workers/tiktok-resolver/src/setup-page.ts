@@ -101,7 +101,11 @@ export function renderSetupPage(code: string, workerUrl: string): string {
           </div>
           <div class="ios-step">
             <strong>Bước 3:</strong> Thêm tác vụ: <strong>Nhận nội dung của URL</strong> (Get Contents of URL):<br>
-            - URL: chọn biến <code>Đầu vào của phím tắt</code> (Shortcut Input).
+            - URL: chọn biến <code>Đầu vào của phím tắt</code> (Shortcut Input).<br>
+            - <strong>BẮT BUỘC:</strong> mở rộng tác vụ -&gt; mục <strong>Tiêu đề (Headers)</strong> -&gt; thêm tiêu đề mới:<br>
+            &nbsp;&bull; Tên (Key): <code>User-Agent</code><br>
+            &nbsp;&bull; Giá trị (Value): <span class="ios-code">Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1</span> <button class="btn-copy" onclick="copyText('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1')">Sao chép</button><br>
+            &nbsp;&nbsp;<em>Không có header này Facebook chỉ trả trang rỗng (không có link video), TV sẽ phải kéo từ server Mỹ rất chậm.</em>
           </div>
           <div class="ios-step">
             <strong>Bước 4:</strong> Thêm tác vụ: <strong>Nhận nội dung của URL</strong>:<br>
