@@ -18,6 +18,31 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&nbsp;/g, ' ');
 }
 
+const ASIA_REGION_RE = /^video[-.](sgp|sin|hkg|bkk|icn|tpe|vnu|myn|han)[-\d.]/i;
+
+function regionScore(url: string): number {
+  try {
+    const host = new URL(url).hostname;
+    if (ASIA_REGION_RE.test(host)) return 100;
+  } catch {}
+  return 0;
+}
+
+export function pickBestVideoUrl(candidates: (string | null | undefined)[]): string | null {
+  const urls = candidates.filter((u): u is string => typeof u === 'string' && /^https?:\/\//i.test(u));
+  if (!urls.length) return null;
+  let best = urls[0];
+  let bestScore = regionScore(urls[0]);
+  for (let i = 1; i < urls.length; i++) {
+    const s = regionScore(urls[i]);
+    if (s > bestScore) {
+      best = urls[i];
+      bestScore = s;
+    }
+  }
+  return best;
+}
+
 function extractOgMeta(html: string, property: string): string | null {
   const patterns = [
     new RegExp(`<meta[^>]+property="${property}"[^>]+content="([^"]+)"`, 'i'),
@@ -41,25 +66,25 @@ function extractJsonString(html: string, key: string): string | null {
   return null;
 }
 
-function extractDirectFbcdnMp4(html: string): string | null {
+function extractDirectFbcdnMp4s(html: string): string[] {
   const matches = html.match(/https?:[^\s"'<>]+\.fbcdn\.net[^\s"'<>]+\.mp4[^\s"'<>]*/gi);
-  if (matches && matches.length > 0) {
-    const u = matches[0].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, '');
-    return decodeHtmlEntities(u);
-  }
-  return null;
+  if (!matches || matches.length === 0) return [];
+  return matches.map((u) =>
+    decodeHtmlEntities(u.replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, '')),
+  );
 }
 
 export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
-  const videoUrl =
-    extractOgMeta(html, 'og:video:secure_url') ||
-    extractOgMeta(html, 'og:video:url') ||
-    extractOgMeta(html, 'og:video') ||
-    extractJsonString(html, 'browser_native_hd_url') ||
-    extractJsonString(html, 'browser_native_sd_url') ||
-    extractJsonString(html, 'playable_url_quality_hd') ||
-    extractJsonString(html, 'playable_url') ||
-    extractDirectFbcdnMp4(html);
+  const videoUrl = pickBestVideoUrl([
+    ...extractDirectFbcdnMp4s(html),
+    extractOgMeta(html, 'og:video:secure_url'),
+    extractOgMeta(html, 'og:video:url'),
+    extractOgMeta(html, 'og:video'),
+    extractJsonString(html, 'browser_native_hd_url'),
+    extractJsonString(html, 'browser_native_sd_url'),
+    extractJsonString(html, 'playable_url_quality_hd'),
+    extractJsonString(html, 'playable_url'),
+  ]);
 
   if (!videoUrl) return null;
 
