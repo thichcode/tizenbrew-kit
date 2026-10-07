@@ -517,7 +517,24 @@
     showPlaybackError('Playback error: ' + msg + ' (code ' + code + ')');
   }
 
-  function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
+  function formatCdnOrSource(href) {
+  try {
+    var u = new URL(href);
+    try {
+      var fb = new URL(FALLBACK_RESOLVER_URL);
+      if (u.hostname === fb.hostname && u.searchParams.has('url')) {
+        var target = u.searchParams.get('url');
+        var t = new URL(target);
+        return t.hostname + ' [via proxy]';
+      }
+    } catch (_) {}
+    return u.hostname;
+  } catch (_) {
+    return '';
+  }
+}
+
+function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     var androidBridge = window.AndroidBridge;
     if (androidBridge && typeof androidBridge.openVideo === 'function') {
       var androidUrl = sourceUrl;
@@ -566,7 +583,7 @@
     video.addEventListener('error', currentMediaErrorHandler);
     video.src = sourceUrl;
     video.load();
-    try { currentCdnDomain = new URL(sourceUrl).hostname; } catch (_) { currentCdnDomain = ''; }
+    try { currentCdnDomain = formatCdnOrSource(sourceUrl); } catch (_) { currentCdnDomain = ''; }
 
     if (!shouldPlay) return;
     var result = video.play();
@@ -785,7 +802,7 @@
         if (!isPlayerOpen || requestId !== playRequestId || !useAv) return;
         if (avPrepareTimer) { try { clearTimeout(avPrepareTimer); } catch (_) {} avPrepareTimer = null; }
         try { avDurSec = (api.getDuration() || 0) / 1000; } catch (_) {}
-        try { currentCdnDomain = new URL(sourceUrl).hostname; } catch (_) { currentCdnDomain = ''; }
+        try { currentCdnDomain = formatCdnOrSource(sourceUrl); } catch (_) { currentCdnDomain = ''; }
         try {
           api.play();
           avPaused = false;
@@ -1018,7 +1035,7 @@
     resolveItem(item, function (resolved) {
       if (!isPlayerOpen || requestId !== playRequestId) return;
       if ((resolved.source === 'Facebook' || resolved.source === 'Bilibili') && resolved.videoUrl === resolved._redirectUrl) sourceFallbackStage = 1;
-      if (playerTitleEl) playerTitleEl.textContent = resolved.title;
+      if (playerTitleEl) playerTitleEl.textContent = (resolved.title || '').length > 100 ? (resolved.title || '').slice(0, 100) + '…' : (resolved.title || '');
       video.autoplay = true;
       video.controls = false;
       if (!avStart(resolved, requestId, resolved.videoUrl)) {
