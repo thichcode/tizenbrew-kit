@@ -730,3 +730,20 @@ class FacebookFormatTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RegionScoringTests(unittest.TestCase):
+    VN_URL = "https://video.fhan14-5.fna.fbcdn.net/o1/v/t2/f2/m412/abc.mp4?oh=123"
+    US_URL = "https://video-den2-1.xx.fbcdn.net/o1/v/t2/f2/m412/abc.mp4?oh=123"
+
+    def test_hanoi_edge_scores_above_denver(self):
+        self.assertEqual(app.region_score(self.VN_URL), 100)
+        self.assertEqual(app.region_score(self.US_URL), -50)
+
+    def test_pick_prefers_vn_regardless_of_order(self):
+        self.assertEqual(app.pick_best_region_url([self.US_URL, self.VN_URL]), self.VN_URL)
+        self.assertEqual(app.pick_best_region_url([self.VN_URL, self.US_URL]), self.VN_URL)
+
+    def test_pick_returns_none_for_empty(self):
+        self.assertIsNone(app.pick_best_region_url([]))
+        self.assertIsNone(app.pick_best_region_url(None))

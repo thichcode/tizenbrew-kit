@@ -18,12 +18,48 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&nbsp;/g, ' ');
 }
 
-const ASIA_REGION_RE = /^video[-.](sgp|sin|hkg|bkk|icn|tpe|vnu|myn|han)[-\d.]/i;
+// Facebook embeds the serving edge (IATA airport code, optionally prefixed
+// with "f") in fbcdn hostnames, e.g. video.fhan14-5.fna.fbcdn.net (Hanoi)
+// vs video-den2-1.xx.fbcdn.net (Denver, US). Verified against og:video tags
+// fetched from a Vietnam IP.
+const ASIA_EDGE_CODES = [
+  'han', 'sgn', // Vietnam: Hanoi, Ho Chi Minh City
+  'sin', 'sgp', // Singapore
+  'kul', // Kuala Lumpur
+  'cgk', // Jakarta
+  'bkk', // Bangkok
+  'hkg', // Hong Kong
+  'tpe', // Taipei
+  'icn', 'gmp', // Seoul
+  'nrt', 'kix', // Tokyo, Osaka
+  'mnl', // Manila
+];
+const US_EDGE_CODES = [
+  'den', // Denver
+  'lax', // Los Angeles
+  'sfo', 'sjc', // San Francisco / San Jose
+  'sea', // Seattle
+  'dfw', // Dallas
+  'ord', // Chicago
+  'atl', // Atlanta
+  'iad', 'dca', // Washington DC
+  'jfk', 'ewr', // New York
+  'bos', // Boston
+  'mia', // Miami
+  'phx', // Phoenix
+  'ash', // Ashburn
+  'prn', // Prineville
+  'ftw', // Fort Worth
+];
+
+const ASIA_EDGE_RE = new RegExp(`(?:^|[-.])f?(?:${ASIA_EDGE_CODES.join('|')})(?=\\d|[-.]|$)`, 'i');
+const US_EDGE_RE = new RegExp(`(?:^|[-.])(?:${US_EDGE_CODES.join('|')})(?=\\d|[-.]|$)`, 'i');
 
 function regionScore(url: string): number {
   try {
     const host = new URL(url).hostname;
-    if (ASIA_REGION_RE.test(host)) return 100;
+    if (ASIA_EDGE_RE.test(host)) return 100;
+    if (US_EDGE_RE.test(host)) return -50;
   } catch {}
   return 0;
 }

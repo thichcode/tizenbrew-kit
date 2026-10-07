@@ -158,7 +158,7 @@ describe('shortvideo-feed worker', () => {
           },
         }), { status: 200, headers: { 'content-type': 'application/json' } }))
         .mockResolvedValueOnce(new Response(
-          '<html><head><meta property="og:video:secure_url" content="https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4"><meta property="og:title" content="SG Title"><meta property="og:image" content="https://scontent.xx.fbcdn.net/sg-thumb.jpg"></head></html>',
+          '<html><head><meta property="og:video:secure_url" content="https://video.fhan14-5.fna.fbcdn.net/v/t42.1790-2/video.mp4"><meta property="og:title" content="SG Title"><meta property="og:image" content="https://scontent.xx.fbcdn.net/sg-thumb.jpg"></head></html>',
           { status: 200, headers: { 'content-type': 'text/html' } },
         )),
       );
@@ -166,7 +166,7 @@ describe('shortvideo-feed worker', () => {
       const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, testEnv);
       expect(res.status).toBe(200);
       const item = (await json(res)).item as Record<string, unknown>;
-      expect(item.videoUrl).toBe('https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4');
+      expect(item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t42.1790-2/video.mp4');
     });
 
     it('stores unresolved Facebook URL when fallback resolver fails', async () => {
@@ -394,7 +394,7 @@ describe('shortvideo-feed worker', () => {
         new Response(JSON.stringify({
           ok: true,
           resolved: {
-            videoUrl: 'https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4',
+            videoUrl: 'https://video.fhan14-5.fna.fbcdn.net/v/t42.1790-2/video.mp4',
             title: 'SG Resolver Title',
             thumbnailUrl: null,
           },
@@ -408,7 +408,7 @@ describe('shortvideo-feed worker', () => {
 
       expect(res.status).toBe(200);
       const data = (await json(res)) as { ok: boolean; item: { videoUrl: string; title: string } };
-      expect(data.item.videoUrl).toBe('https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4');
+      expect(data.item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t42.1790-2/video.mp4');
     });
   });
 
