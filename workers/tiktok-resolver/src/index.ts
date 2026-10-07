@@ -413,6 +413,12 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   await writeFeed(env, code, deduplicate(items).slice(0, MAX_ITEMS));
 
   const response: Record<string, unknown> = { ok: true, item: feedItem, pickedFrom, htmlLen: htmlContent.length };
+  try {
+    const host = new URL(resolved.videoUrl).hostname;
+    response.ketluan = regionScore(resolved.videoUrl) >= 100
+      ? `LINK VN (${host}) - nguon ${pickedFrom}`
+      : `LINK MY (${host}) - html thieu og:video, them User-Agent vao action tai trang FB`;
+  } catch {}
   if (htmlContent && pickedFrom !== 'html') {
     response.warning = 'Submitted HTML had no Asia-region og:video (likely fetched without a browser User-Agent). Re-download the shortcut from the setup page so the fetch carries an iPhone Safari UA.';
   }
