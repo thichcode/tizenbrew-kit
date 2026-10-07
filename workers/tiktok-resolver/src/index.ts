@@ -1,5 +1,5 @@
 import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
-import { resolveFacebookUrl, parseFacebookHtml } from './resolver-facebook';
+import { resolveFacebookUrl, parseFacebookHtml, pickBestVideoUrl } from './resolver-facebook';
 import { renderSetupPage } from './setup-page';
 import { generateShortcutXml } from './shortcut-builder';
 
@@ -88,7 +88,8 @@ function suggestKey(code: string): string {
 }
 
 function cacheKey(url: string): string {
-  return `cache:${url.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 100)}`;
+  // v2: bust entries cached before region-aware URL picking shipped
+  return `cache:v2:${url.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 100)}`;
 }
 
 function generateId(sourceUrl: string): string {
@@ -277,8 +278,12 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
     try {
       const resolved = await resolveFacebookUrl(platformUrl);
       if (resolved) {
-        if (resolved.videoUrl && (fbVideoUrl === platformUrl || !fallbackResolved)) {
-          fbVideoUrl = resolved.videoUrl;
+        // Worker runs on Cloudflare edge near the user (VN/SG), so its scraped
+        // URL is often Asia-region while the US backend returns den-2.
+        // Pick the best region instead of preferring the fallback blindly.
+        const best = pickBestVideoUrl([resolved.videoUrl, fallbackResolved?.videoUrl]);
+        if (best && best !== platformUrl) {
+          fbVideoUrl = best;
           resolvedAt = new Date().toISOString();
         }
         if (resolved.title) fbTitle = resolved.title;
@@ -349,16 +354,20 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
 
   let resolved = htmlContent ? parseFacebookHtml(htmlContent, platformUrl) : null;
 
-  if ((!resolved || !resolved.videoUrl) && platformUrl && isValidUrl(platformUrl)) {
+  if (platformUrl && isValidUrl(platformUrl)) {
     try {
       const fallback = await callFallbackResolver(env, platformUrl);
       if (fallback && fallback.videoUrl) {
+        // iPhone HTML (VN IP) often already has an Asia-region URL while the
+        // US backend returns den-2. Pick the best region, don't blindly
+        // prefer whichever source came first.
+        const best = pickBestVideoUrl([resolved?.videoUrl, fallback.videoUrl]);
         resolved = {
-          videoUrl: fallback.videoUrl,
-          title: fallback.title || 'Facebook Video',
-          thumbnailUrl: fallback.thumbnailUrl || null,
+          videoUrl: best || fallback.videoUrl,
+          title: resolved?.title || fallback.title || 'Facebook Video',
+          thumbnailUrl: resolved?.thumbnailUrl || fallback.thumbnailUrl || null,
           author: 'Facebook',
-          videoId: '',
+          videoId: resolved?.videoId || '',
         };
       }
     } catch {}

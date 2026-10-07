@@ -142,6 +142,33 @@ describe('shortvideo-feed worker', () => {
       );
     });
 
+    it('prefers Asia-region URL over US fallback when both resolve', async () => {
+      const testEnv = env({
+        FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
+        FALLBACK_API_KEY: 'secret',
+      });
+      const rawUrl = 'https://www.facebook.com/reel/123456';
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          ok: true,
+          resolved: {
+            videoUrl: 'https://video-den2-1.xx.fbcdn.net/v/t42.1790-2/video.mp4',
+            title: 'Fallback Resolver Title',
+            thumbnailUrl: 'https://scontent.xx.fbcdn.net/old-thumb.jpg',
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } }))
+        .mockResolvedValueOnce(new Response(
+          '<html><head><meta property="og:video:secure_url" content="https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4"><meta property="og:title" content="SG Title"><meta property="og:image" content="https://scontent.xx.fbcdn.net/sg-thumb.jpg"></head></html>',
+          { status: 200, headers: { 'content-type': 'text/html' } },
+        )),
+      );
+
+      const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, testEnv);
+      expect(res.status).toBe(200);
+      const item = (await json(res)).item as Record<string, unknown>;
+      expect(item.videoUrl).toBe('https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4');
+    });
+
     it('stores unresolved Facebook URL when fallback resolver fails', async () => {
       const testEnv = env({ FALLBACK_RESOLVER_URL: 'https://resolver.example.com' });
       const rawUrl = 'https://www.facebook.com/reel/123456';
@@ -350,6 +377,38 @@ describe('shortvideo-feed worker', () => {
       const feedData = (await json(feedRes)) as { items: Array<{ videoUrl: string }> };
       expect(feedData.items.length).toBe(1);
       expect(feedData.items[0].videoUrl).toBe('https://video.fhan14-3.fna.fbcdn.net/v/t2/test.mp4?oh=123');
+    });
+
+    it('prefers Asia-region fallback URL over US HTML URL on submit-html', async () => {
+      const testEnv = env({
+        FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
+        FALLBACK_API_KEY: 'secret',
+      });
+      const htmlWithUsUrl = `
+        <!doctype html><html><head>
+          <meta property="og:title" content="US Reel" />
+          <meta property="og:video" content="https://video-den2-1.xx.fbcdn.net/v/t2/test.mp4?oh=123" />
+        </head></html>
+      `;
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({
+          ok: true,
+          resolved: {
+            videoUrl: 'https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4',
+            title: 'SG Resolver Title',
+            thumbnailUrl: null,
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } }),
+      ));
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/999999',
+        html: htmlWithUsUrl,
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; item: { videoUrl: string; title: string } };
+      expect(data.item.videoUrl).toBe('https://video-sgp1-1.xx.fbcdn.net/v/t42.1790-2/video.mp4');
     });
   });
 
