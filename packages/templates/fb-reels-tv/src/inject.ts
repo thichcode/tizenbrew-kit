@@ -624,7 +624,7 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     return true;
   }
 
-  var APP_VERSION = '1.2.22';
+  var APP_VERSION = '1.2.23';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
