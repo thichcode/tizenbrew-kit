@@ -412,6 +412,17 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   items.unshift(feedItem);
   await writeFeed(env, code, deduplicate(items).slice(0, MAX_ITEMS));
 
+  try {
+    await env.FEED_ITEMS.put('debug:last-submit-html', JSON.stringify({
+      at: new Date().toISOString(),
+      platformUrl: (platformUrl || '').slice(0, 120),
+      htmlLen: htmlContent.length,
+      htmlHasOgVideo: /og:video/i.test(htmlContent),
+      pickedFrom,
+      finalHost: (() => { try { return new URL(resolved.videoUrl).hostname; } catch { return ''; } })(),
+    }));
+  } catch {}
+
   const response: Record<string, unknown> = { ok: true, item: feedItem, pickedFrom, htmlLen: htmlContent.length };
   try {
     const host = new URL(resolved.videoUrl).hostname;
