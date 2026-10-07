@@ -411,7 +411,7 @@ describe('shortvideo-feed worker', () => {
       expect(data.item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t42.1790-2/video.mp4');
     });
 
-    it('prefers worker-scraped Asia URL when HTML and fallback are both US', async () => {
+    it('prefers canonical-scraped Asia URL when HTML and fallback are both US', async () => {
       const testEnv = env({
         FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
         FALLBACK_API_KEY: 'secret',

@@ -355,21 +355,37 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   let resolved = htmlContent ? parseFacebookHtml(htmlContent, platformUrl) : null;
 
   if (platformUrl && isValidUrl(platformUrl) && (!resolved?.videoUrl || regionScore(resolved.videoUrl) < 100)) {
-    // iPhone HTML yielded no Asia-region URL (or none at all). Scrape from
-    // Cloudflare edge (near VN for VN users) plus the US backend in parallel,
-    // then keep whichever source has the best region.
-    const [fallback, workerScraped] = await Promise.all([
-      callFallbackResolver(env, platformUrl).catch(() => null),
-      resolveFacebookUrl(platformUrl).catch(() => null),
-    ]);
-    const best = pickBestVideoUrl([resolved?.videoUrl, workerScraped?.videoUrl, fallback?.videoUrl]);
+    // iPhone HTML yielded no Asia-region URL. Share links (/share/r/...) usually
+    // come back as redirect shells without og:video, so follow redirects to the
+    // canonical reel URL on Cloudflare edge (near VN) and scrape it, plus ask
+    // the US backend in parallel. Keep whichever source has the best region.
+    let canonicalParsed = null;
+    try {
+      const res = await fetch(platformUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        redirect: 'follow',
+      });
+      if (res.ok) {
+        const finalUrl = res.url && res.url !== platformUrl ? res.url : platformUrl;
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('html')) {
+          canonicalParsed = parseFacebookHtml(await res.text(), finalUrl);
+        }
+      }
+    } catch {}
+    const fallback = await callFallbackResolver(env, platformUrl).catch(() => null);
+    const best = pickBestVideoUrl([resolved?.videoUrl, canonicalParsed?.videoUrl, fallback?.videoUrl]);
     if (best) {
       resolved = {
         videoUrl: best,
-        title: resolved?.title || workerScraped?.title || fallback?.title || 'Facebook Video',
-        thumbnailUrl: resolved?.thumbnailUrl || workerScraped?.thumbnailUrl || fallback?.thumbnailUrl || null,
+        title: resolved?.title || canonicalParsed?.title || fallback?.title || 'Facebook Video',
+        thumbnailUrl: resolved?.thumbnailUrl || canonicalParsed?.thumbnailUrl || fallback?.thumbnailUrl || null,
         author: 'Facebook',
-        videoId: resolved?.videoId || workerScraped?.videoId || '',
+        videoId: resolved?.videoId || canonicalParsed?.videoId || '',
       };
     }
   }
