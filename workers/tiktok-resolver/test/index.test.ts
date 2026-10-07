@@ -446,6 +446,44 @@ describe('shortvideo-feed worker', () => {
       const data = (await json(res)) as { ok: boolean; item: { videoUrl: string; title: string } };
       expect(data.item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t42/edge.mp4');
     });
+
+    it('reports pickedFrom html when iPhone HTML already has Asia URL', async () => {
+      const testEnv = env();
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/123456',
+        html: '<html><head><meta property="og:video:secure_url" content="https://video.fhan14-5.fna.fbcdn.net/v/t42/x.mp4" /></head></html>',
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; pickedFrom: string; warning?: string };
+      expect(data.pickedFrom).toBe('html');
+      expect(data.warning).toBeUndefined();
+    });
+
+    it('warns when submitted HTML lacks Asia og:video and fallback wins', async () => {
+      const testEnv = env({
+        FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
+        FALLBACK_API_KEY: 'secret',
+      });
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(new Response('<html><head><title>shell</title></head></html>', { status: 200, headers: { 'content-type': 'text/html' } }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          ok: true,
+          resolved: { videoUrl: 'https://video-den2-1.xx.fbcdn.net/v/t42/us.mp4', title: 'US', thumbnailUrl: null },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })),
+      );
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/777777',
+        html: '<html><head><title>shell</title></head></html>',
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; pickedFrom: string; warning?: string };
+      expect(data.pickedFrom).toBe('fallback');
+      expect(data.warning).toContain('User-Agent');
+    });
   });
 
   describe('GET /download-shortcut', () => {

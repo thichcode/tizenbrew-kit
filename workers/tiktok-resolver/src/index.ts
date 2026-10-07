@@ -353,8 +353,10 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   }
 
   let resolved = htmlContent ? parseFacebookHtml(htmlContent, platformUrl) : null;
+  const htmlVideoUrl = resolved?.videoUrl || null;
+  let pickedFrom: string | null = htmlVideoUrl && regionScore(htmlVideoUrl) >= 100 ? 'html' : null;
 
-  if (platformUrl && isValidUrl(platformUrl) && (!resolved?.videoUrl || regionScore(resolved.videoUrl) < 100)) {
+  if (platformUrl && isValidUrl(platformUrl) && !pickedFrom) {
     // iPhone HTML yielded no Asia-region URL. Share links (/share/r/...) usually
     // come back as redirect shells without og:video, so follow redirects to the
     // canonical reel URL on Cloudflare edge (near VN) and scrape it, plus ask
@@ -380,6 +382,7 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
     const fallback = await callFallbackResolver(env, platformUrl).catch(() => null);
     const best = pickBestVideoUrl([resolved?.videoUrl, canonicalParsed?.videoUrl, fallback?.videoUrl]);
     if (best) {
+      pickedFrom = best === canonicalParsed?.videoUrl ? 'canonical' : best === fallback?.videoUrl ? 'fallback' : 'html';
       resolved = {
         videoUrl: best,
         title: resolved?.title || canonicalParsed?.title || fallback?.title || 'Facebook Video',
@@ -409,7 +412,11 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   items.unshift(feedItem);
   await writeFeed(env, code, deduplicate(items).slice(0, MAX_ITEMS));
 
-  return json({ ok: true, item: feedItem });
+  const response: Record<string, unknown> = { ok: true, item: feedItem, pickedFrom };
+  if (htmlContent && pickedFrom !== 'html') {
+    response.warning = 'Submitted HTML had no Asia-region og:video (likely fetched without a browser User-Agent). Re-download the shortcut from the setup page so the fetch carries an iPhone Safari UA.';
+  }
+  return json(response);
 }
 
 async function handleFeed(request: Request, env: Env): Promise<Response> {
