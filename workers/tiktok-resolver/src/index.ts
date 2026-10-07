@@ -394,7 +394,13 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   }
 
   if (!resolved || !resolved.videoUrl) {
-    return json({ error: 'Could not extract video from HTML or URL' }, 422);
+    return json({
+      error: 'Could not extract video from HTML or URL',
+      htmlLen: htmlContent.length,
+      htmlHasOgVideo: /og:video/i.test(htmlContent),
+      platformUrl,
+      hint: 'Neu htmlLen ~5000 va khong co og:video: action GET chua gui User-Agent hoac tai nham URL (khong phai trang reel). Neu htmlLen = 0: truong html gui len rong.',
+    }, 422);
   }
 
   const feedItem: FeedItem = {
