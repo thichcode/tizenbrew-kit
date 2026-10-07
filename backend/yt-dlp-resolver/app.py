@@ -541,7 +541,7 @@ def build_bilibili_dash_mpd(source_url: str) -> str:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": "0.4.0"}
+    return {"ok": True, "version": "0.4.1"}
 
 
 @app.get("/resolve", response_model=ResolveResponse)
