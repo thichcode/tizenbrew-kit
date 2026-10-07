@@ -412,7 +412,7 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   items.unshift(feedItem);
   await writeFeed(env, code, deduplicate(items).slice(0, MAX_ITEMS));
 
-  const response: Record<string, unknown> = { ok: true, item: feedItem, pickedFrom };
+  const response: Record<string, unknown> = { ok: true, item: feedItem, pickedFrom, htmlLen: htmlContent.length };
   if (htmlContent && pickedFrom !== 'html') {
     response.warning = 'Submitted HTML had no Asia-region og:video (likely fetched without a browser User-Agent). Re-download the shortcut from the setup page so the fetch carries an iPhone Safari UA.';
   }
