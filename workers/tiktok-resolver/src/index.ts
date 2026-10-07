@@ -1,5 +1,5 @@
 import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
-import { resolveFacebookUrl, parseFacebookHtml, pickBestVideoUrl } from './resolver-facebook';
+import { resolveFacebookUrl, parseFacebookHtml, pickBestVideoUrl, regionScore } from './resolver-facebook';
 import { renderSetupPage } from './setup-page';
 import { generateShortcutXml } from './shortcut-builder';
 
@@ -354,23 +354,24 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
 
   let resolved = htmlContent ? parseFacebookHtml(htmlContent, platformUrl) : null;
 
-  if (platformUrl && isValidUrl(platformUrl)) {
-    try {
-      const fallback = await callFallbackResolver(env, platformUrl);
-      if (fallback && fallback.videoUrl) {
-        // iPhone HTML (VN IP) often already has an Asia-region URL while the
-        // US backend returns den-2. Pick the best region, don't blindly
-        // prefer whichever source came first.
-        const best = pickBestVideoUrl([resolved?.videoUrl, fallback.videoUrl]);
-        resolved = {
-          videoUrl: best || fallback.videoUrl,
-          title: resolved?.title || fallback.title || 'Facebook Video',
-          thumbnailUrl: resolved?.thumbnailUrl || fallback.thumbnailUrl || null,
-          author: 'Facebook',
-          videoId: resolved?.videoId || '',
-        };
-      }
-    } catch {}
+  if (platformUrl && isValidUrl(platformUrl) && (!resolved?.videoUrl || regionScore(resolved.videoUrl) < 100)) {
+    // iPhone HTML yielded no Asia-region URL (or none at all). Scrape from
+    // Cloudflare edge (near VN for VN users) plus the US backend in parallel,
+    // then keep whichever source has the best region.
+    const [fallback, workerScraped] = await Promise.all([
+      callFallbackResolver(env, platformUrl).catch(() => null),
+      resolveFacebookUrl(platformUrl).catch(() => null),
+    ]);
+    const best = pickBestVideoUrl([resolved?.videoUrl, workerScraped?.videoUrl, fallback?.videoUrl]);
+    if (best) {
+      resolved = {
+        videoUrl: best,
+        title: resolved?.title || workerScraped?.title || fallback?.title || 'Facebook Video',
+        thumbnailUrl: resolved?.thumbnailUrl || workerScraped?.thumbnailUrl || fallback?.thumbnailUrl || null,
+        author: 'Facebook',
+        videoId: resolved?.videoId || workerScraped?.videoId || '',
+      };
+    }
   }
 
   if (!resolved || !resolved.videoUrl) {

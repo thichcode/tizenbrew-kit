@@ -410,6 +410,42 @@ describe('shortvideo-feed worker', () => {
       const data = (await json(res)) as { ok: boolean; item: { videoUrl: string; title: string } };
       expect(data.item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t42.1790-2/video.mp4');
     });
+
+    it('prefers worker-scraped Asia URL when HTML and fallback are both US', async () => {
+      const testEnv = env({
+        FALLBACK_RESOLVER_URL: 'https://resolver.example.com',
+        FALLBACK_API_KEY: 'secret',
+      });
+      const htmlWithUsUrl = `
+        <!doctype html><html><head>
+          <meta property="og:title" content="US Reel" />
+          <meta property="og:video" content="https://video-den2-1.xx.fbcdn.net/v/t2/test.mp4?oh=123" />
+        </head></html>
+      `;
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(new Response(
+          '<html><head><meta property="og:video:secure_url" content="https://video.fhan14-5.fna.fbcdn.net/v/t42/edge.mp4"><meta property="og:title" content="Edge Title"></head></html>',
+          { status: 200, headers: { 'content-type': 'text/html' } },
+        ))
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          ok: true,
+          resolved: {
+            videoUrl: 'https://video-den2-1.xx.fbcdn.net/v/t42.1790-2/video.mp4',
+            title: 'US Resolver Title',
+            thumbnailUrl: null,
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } })),
+      );
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/888888',
+        html: htmlWithUsUrl,
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; item: { videoUrl: string; title: string } };
+      expect(data.item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t42/edge.mp4');
+    });
   });
 
   describe('GET /download-shortcut', () => {

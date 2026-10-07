@@ -55,7 +55,7 @@ const US_EDGE_CODES = [
 const ASIA_EDGE_RE = new RegExp(`(?:^|[-.])f?(?:${ASIA_EDGE_CODES.join('|')})(?=\\d|[-.]|$)`, 'i');
 const US_EDGE_RE = new RegExp(`(?:^|[-.])(?:${US_EDGE_CODES.join('|')})(?=\\d|[-.]|$)`, 'i');
 
-function regionScore(url: string): number {
+export function regionScore(url: string): number {
   try {
     const host = new URL(url).hostname;
     if (ASIA_EDGE_RE.test(host)) return 100;
