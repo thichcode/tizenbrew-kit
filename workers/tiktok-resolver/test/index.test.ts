@@ -484,6 +484,49 @@ describe('shortvideo-feed worker', () => {
       expect(data.pickedFrom).toBe('fallback');
       expect(data.warning).toContain('User-Agent');
     });
+
+    it('recognizes Da Nang (dad) edge code as Asia region', async () => {
+      const testEnv = env();
+      const sampleHtml = `
+        <!doctype html><html><head>
+          <meta property='og:title' content='Test Reel Da Nang' />
+          <meta property='og:video' content='https://video.fdad1-1.fna.fbcdn.net/v/t2/danang.mp4?oh=123' />
+        </head></html>
+      `;
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/111222',
+        html: sampleHtml,
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; pickedFrom: string; item: { videoUrl: string } };
+      expect(data.pickedFrom).toBe('html');
+      expect(data.item.videoUrl).toBe('https://video.fdad1-1.fna.fbcdn.net/v/t2/danang.mp4?oh=123');
+    });
+
+    it('extracts hd_src from escaped JSON scripts and ignores audio streams', async () => {
+      const testEnv = env();
+      const sampleHtml = `
+        <!doctype html><html><body>
+          <script>
+            var blob = {
+              "\\"hd_src\\"": "https:\\/\\/video.fhan14-5.fna.fbcdn.net\\/v\\/t39\\/hd_clean.mp4?_nc_cat=101",
+              "audio_track": "https://video.fhan14-5.fna.fbcdn.net/v/audio.mp4"
+            };
+          </script>
+        </body></html>
+      `;
+      const res = await post('https://feed.example.com/submit-html', {
+        code: CODE,
+        url: 'https://www.facebook.com/reel/333444',
+        html: sampleHtml,
+      }, testEnv);
+
+      expect(res.status).toBe(200);
+      const data = (await json(res)) as { ok: boolean; item: { videoUrl: string } };
+      expect(data.item.videoUrl).toBe('https://video.fhan14-5.fna.fbcdn.net/v/t39/hd_clean.mp4?_nc_cat=101');
+    });
   });
 
   describe('GET /download-shortcut', () => {

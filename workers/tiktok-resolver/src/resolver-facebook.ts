@@ -23,7 +23,7 @@ function decodeHtmlEntities(str: string): string {
 // vs video-den2-1.xx.fbcdn.net (Denver, US). Verified against og:video tags
 // fetched from a Vietnam IP.
 const ASIA_EDGE_CODES = [
-  'han', 'sgn', // Vietnam: Hanoi, Ho Chi Minh City
+  'han', 'sgn', 'dad', 'hph', 'vca', 'cxr', // Vietnam: Hanoi, HCMC, Danang, Haiphong, Cantho, Nha Trang
   'sin', 'sgp', // Singapore
   'kul', // Kuala Lumpur
   'cgk', // Jakarta
@@ -33,6 +33,8 @@ const ASIA_EDGE_CODES = [
   'icn', 'gmp', // Seoul
   'nrt', 'kix', // Tokyo, Osaka
   'mnl', // Manila
+  'pnh', 'rep', // Cambodia
+  'vte', // Laos
 ];
 const US_EDGE_CODES = [
   'den', // Denver
@@ -81,10 +83,10 @@ export function pickBestVideoUrl(candidates: (string | null | undefined)[]): str
 
 function extractOgMeta(html: string, property: string): string | null {
   const patterns = [
-    new RegExp(`<meta[^>]+property="${property}"[^>]+content="([^"]+)"`, 'i'),
-    new RegExp(`<meta[^>]+content="([^"]+)"[^>]+property="${property}"`, 'i'),
-    new RegExp(`<meta[^>]+name="${property}"[^>]+content="([^"]+)"`, 'i'),
-    new RegExp(`<meta[^>]+content="([^"]+)"[^>]+name="${property}"`, 'i'),
+    new RegExp(`<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`, 'i'),
+    new RegExp(`<meta[^>]+name=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
+    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${property}["']`, 'i'),
   ];
   for (const p of patterns) {
     const m = html.match(p);
@@ -94,7 +96,7 @@ function extractOgMeta(html: string, property: string): string | null {
 }
 
 function extractJsonString(html: string, key: string): string | null {
-  const p = new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`, 'i');
+  const p = new RegExp(`\\\\?"${key}\\\\?"\\s*:\\s*\\\\?"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)\\\\?"`, 'i');
   const m = html.match(p);
   if (m) {
     return decodeHtmlEntities(m[1].replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, ''));
@@ -105,21 +107,29 @@ function extractJsonString(html: string, key: string): string | null {
 function extractDirectFbcdnMp4s(html: string): string[] {
   const matches = html.match(/https?:[^\s"'<>]+\.fbcdn\.net[^\s"'<>]+\.mp4[^\s"'<>]*/gi);
   if (!matches || matches.length === 0) return [];
-  return matches.map((u) =>
-    decodeHtmlEntities(u.replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, '')),
-  );
+  return matches
+    .map((u) =>
+      decodeHtmlEntities(u.replace(/\\u0025/g, '%').replace(/\\u0026/g, '&').replace(/\\u002F/g, '/').replace(/\\/g, '')),
+    )
+    .filter((u) => !/audio|bytestart=|byteend=|\.mpd/i.test(u));
 }
 
 export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
   const videoUrl = pickBestVideoUrl([
-    ...extractDirectFbcdnMp4s(html),
     extractOgMeta(html, 'og:video:secure_url'),
     extractOgMeta(html, 'og:video:url'),
     extractOgMeta(html, 'og:video'),
     extractJsonString(html, 'browser_native_hd_url'),
-    extractJsonString(html, 'browser_native_sd_url'),
     extractJsonString(html, 'playable_url_quality_hd'),
+    extractJsonString(html, 'hd_src'),
+    extractJsonString(html, 'hd_src_no_ratelimit'),
+    extractJsonString(html, 'browser_native_sd_url'),
     extractJsonString(html, 'playable_url'),
+    extractJsonString(html, 'sd_src'),
+    extractJsonString(html, 'sd_src_no_ratelimit'),
+    extractJsonString(html, 'video_url'),
+    extractJsonString(html, 'base_url'),
+    ...extractDirectFbcdnMp4s(html),
   ]);
 
   if (!videoUrl) return null;

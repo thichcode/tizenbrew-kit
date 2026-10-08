@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run test/index.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "typescript": "^5.8.3",
