@@ -852,10 +852,92 @@ class ProxyConfigurationTests(unittest.TestCase):
 
         async def run_lifespan():
             async with app.lifespan(application):
-                return application.state.http_client
+                return application.state.http_client, getattr(application.state, "direct_http_client", None)
 
-        client = asyncio.run(run_lifespan())
+        client, direct_client = asyncio.run(run_lifespan())
         self.assertIsNotNone(client)
+        self.assertIsNotNone(direct_client)
+        self.assertIsNot(client, direct_client)
+
+    def test_is_proxy_error_helper(self):
+        self.assertTrue(app.is_proxy_error("ERROR: Unable to connect to proxy"))
+        self.assertTrue(app.is_proxy_error("Tunnel connection failed: 407"))
+        self.assertTrue(app.is_proxy_error("Connection refused"))
+        self.assertTrue(app.is_proxy_error("Timed out"))
+        self.assertFalse(app.is_proxy_error("Video unavailable / 404 Not Found"))
+        self.assertFalse(app.is_proxy_error(""))
+        self.assertFalse(app.is_proxy_error(None))
+
+    def test_run_yt_dlp_auto_fallback_on_proxy_error(self):
+        os.environ["PROXY_USER"] = "u"
+        os.environ["PROXY_PASS"] = "p"
+        failed_proxy = CompletedProcess([], 1, stdout="", stderr="ERROR: Proxy connection refused")
+        ok_direct = CompletedProcess([], 0, stdout='{"title": "Test Video"}', stderr="")
+
+        with patch.object(app.subprocess, "run", side_effect=[failed_proxy, ok_direct]) as mock_run:
+            result = app.run_yt_dlp("https://www.facebook.com/watch")
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(mock_run.call_count, 2)
+            # First attempt with proxy
+            self.assertIn("--proxy", mock_run.call_args_list[0][0][0])
+            # Second attempt without proxy (direct fallback)
+            self.assertNotIn("--proxy", mock_run.call_args_list[1][0][0])
+
+    def test_facebook_get_url_auto_fallback_on_proxy_error(self):
+        os.environ["PROXY_USER"] = "u"
+        os.environ["PROXY_PASS"] = "p"
+        failed_proxy = CompletedProcess([], 1, stdout="", stderr="ERROR: Unable to connect to proxy: 103.195.238.24")
+        ok_direct = CompletedProcess([], 0, stdout=CDN_URL + "\n", stderr="")
+
+        with patch.object(app.subprocess, "run", side_effect=[failed_proxy, ok_direct]) as mock_run:
+            result = app.resolve_and_get_cdn(FACEBOOK_URL)
+            self.assertEqual(result, CDN_URL)
+            self.assertEqual(mock_run.call_count, 2)
+            # First attempt included proxy
+            self.assertIn("--proxy", mock_run.call_args_list[0][0][0])
+            # Second attempt was direct
+            self.assertNotIn("--proxy", mock_run.call_args_list[1][0][0])
+
+    def test_scrape_facebook_og_auto_fallback_on_proxy_error(self):
+        os.environ["PROXY_USER"] = "u"
+        os.environ["PROXY_PASS"] = "p"
+
+        html_bytes = b'<html><meta property="og:video" content="https://video.xx.fbcdn.net/scraped.mp4" /></html>'
+        proxy_opener = SimpleNamespace(open=unittest.mock.Mock(side_effect=app.urllib.error.URLError("Proxy connection refused")))
+        direct_opener = SimpleNamespace(open=unittest.mock.Mock(return_value=FakeUrlResponse(200, body=html_bytes)))
+
+        with patch.object(app, "build_http_opener", side_effect=[proxy_opener, direct_opener]):
+            result = app.scrape_facebook_og(FACEBOOK_URL)
+            self.assertIsNotNone(result)
+            self.assertEqual(result["videoUrl"], "https://video.xx.fbcdn.net/scraped.mp4")
+
+    def test_proxy_cdn_auto_fallback_on_proxy_error(self):
+        proxy_client = AsyncMock()
+        proxy_client.build_request = unittest.mock.MagicMock()
+        proxy_client.send = AsyncMock(side_effect=httpx.ProxyError("Cannot connect to proxy"))
+
+        direct_client = AsyncMock()
+        direct_client.build_request = unittest.mock.MagicMock()
+        direct_resp = httpx.Response(200, headers={"content-type": "video/mp4"}, stream=TrackingStream(b"direct_data"))
+        direct_client.send = AsyncMock(return_value=direct_resp)
+
+        request = SimpleNamespace(
+            headers={},
+            app=SimpleNamespace(state=SimpleNamespace(http_client=proxy_client, direct_http_client=direct_client)),
+        )
+
+        async def run_proxy():
+            response = await app.proxy_cdn(request, CDN_URL, FACEBOOK_URL)
+            body = b"".join([chunk async for chunk in response.body_iterator])
+            if response.background:
+                await response.background()
+            return response, body
+
+        response, body = asyncio.run(run_proxy())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body, b"direct_data")
+        proxy_client.send.assert_awaited_once()
+        direct_client.send.assert_awaited_once()
 
 
 if __name__ == "__main__":

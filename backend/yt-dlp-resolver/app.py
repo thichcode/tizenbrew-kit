@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import re
 import subprocess
@@ -16,8 +17,33 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
+logger = logging.getLogger("yt-dlp-resolver")
+
 DEFAULT_PROXY_HOST = "103.195.238.24"
 DEFAULT_PROXY_PORT = "443"
+
+
+def is_proxy_error(err: str | Exception | None) -> bool:
+    if not err:
+        return False
+    text = str(err).lower()
+    keywords = (
+        "proxy",
+        "tunnel connection failed",
+        "connection refused",
+        "407",
+        "proxy authentication",
+        "socks",
+        "unable to connect",
+        "failed to connect",
+        "timed out",
+        "timeout",
+        "remote end closed",
+        "reset by peer",
+        "connecterror",
+        "proxyerror",
+    )
+    return any(k in text for k in keywords)
 
 
 def get_proxy_url() -> str | None:
@@ -73,9 +99,18 @@ async def lifespan(application: FastAPI):
     }
     if proxy_url:
         client_kwargs["proxy"] = proxy_url
+
     async with httpx.AsyncClient(**client_kwargs) as client:
         application.state.http_client = client
-        yield
+        if proxy_url:
+            async with httpx.AsyncClient(
+                limits=limits, timeout=timeout, follow_redirects=False
+            ) as direct_client:
+                application.state.direct_http_client = direct_client
+                yield
+        else:
+            application.state.direct_http_client = client
+            yield
 
 
 app = FastAPI(title="yt-dlp Resolver", version="0.4.2", lifespan=lifespan)
@@ -115,9 +150,9 @@ class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def build_http_opener(*custom_handlers) -> urllib.request.OpenerDirector:
+def build_http_opener(*custom_handlers, use_proxy: bool = True) -> urllib.request.OpenerDirector:
     handlers = list(custom_handlers)
-    proxy_url = get_proxy_url()
+    proxy_url = get_proxy_url() if use_proxy else None
     if proxy_url:
         handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
     return urllib.request.build_opener(*handlers)
@@ -142,8 +177,16 @@ def tiktok_try_api(video_id: str) -> dict | None:
         "Referer": "https://www.tiktok.com/",
     })
     try:
-        opener = build_http_opener()
-        resp = opener.open(req, timeout=15)
+        try:
+            opener = build_http_opener()
+            resp = opener.open(req, timeout=15)
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            if get_proxy_url():
+                logger.warning("tiktok_try_api proxy failed (%s), falling back to direct", exc)
+                opener = build_http_opener(use_proxy=False)
+                resp = opener.open(req, timeout=15)
+            else:
+                raise
         data = json.loads(resp.read().decode())
         item = (data.get("itemInfo") or {}).get("itemStruct") or {}
         video = item.get("video") or {}
@@ -229,6 +272,7 @@ def tiktok_open_url(url: str):
     opener = build_http_opener(NoRedirectHandler())
     current_url = url
     redirect_count = 0
+    is_direct_fallback = False
 
     while True:
         if not is_tiktok_url(current_url):
@@ -244,6 +288,19 @@ def tiktok_open_url(url: str):
             if exc.code not in TIKTOK_REDIRECT_STATUSES:
                 raise
             response = exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            if get_proxy_url() and not is_direct_fallback:
+                logger.warning("tiktok_open_url proxy failed (%s), falling back to direct", exc)
+                opener = build_http_opener(NoRedirectHandler(), use_proxy=False)
+                is_direct_fallback = True
+                try:
+                    response = opener.open(request, timeout=15)
+                except urllib.error.HTTPError as exc2:
+                    if exc2.code not in TIKTOK_REDIRECT_STATUSES:
+                        raise
+                    response = exc2
+            else:
+                raise
 
         status = getattr(response, "status", None) or response.getcode()
         if status not in TIKTOK_REDIRECT_STATUSES:
@@ -267,8 +324,16 @@ def scrape_facebook_og(url: str) -> dict | None:
         "Accept-Language": "en-US,en;q=0.9",
     })
     try:
-        opener = build_http_opener()
-        resp = opener.open(req, timeout=15)
+        try:
+            opener = build_http_opener()
+            resp = opener.open(req, timeout=15)
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            if get_proxy_url():
+                logger.warning("scrape_facebook_og proxy failed (%s), falling back to direct", exc)
+                opener = build_http_opener(use_proxy=False)
+                resp = opener.open(req, timeout=15)
+            else:
+                raise
         html = resp.read().decode("utf-8", errors="replace")
 
         def extract_meta(property_name: str) -> str | None:
@@ -331,9 +396,7 @@ def check_api_key(x_api_key: str | None = None) -> None:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
 
-# yt-dlp extractor-internal requests cannot be reliably prevalidated; source
-# allowlisting and the dedicated unprivileged service constrain them operationally.
-def run_yt_dlp(url: str, extra_args: list[str] | None = None) -> subprocess.CompletedProcess:
+def run_yt_dlp(url: str, extra_args: list[str] | None = None, allow_fallback: bool = True) -> subprocess.CompletedProcess:
     cmd = [YT_DLP, "--dump-json", "--no-download"]
     proxy_url = get_proxy_url()
     if proxy_url:
@@ -342,12 +405,32 @@ def run_yt_dlp(url: str, extra_args: list[str] | None = None) -> subprocess.Comp
         cmd.extend(extra_args)
     cmd.append(url)
     try:
-        return subprocess.run(cmd, capture_output=True, timeout=60,
-                              encoding="utf-8", errors="replace")
+        res = subprocess.run(cmd, capture_output=True, timeout=60,
+                             encoding="utf-8", errors="replace")
+        if res.returncode != 0 and proxy_url and allow_fallback and is_proxy_error(res.stderr):
+            logger.warning("yt-dlp proxy failed (%s), falling back to direct connection", res.stderr.strip()[:200])
+            direct_cmd = [YT_DLP, "--dump-json", "--no-download"]
+            if extra_args:
+                direct_cmd.extend(extra_args)
+            direct_cmd.append(url)
+            return subprocess.run(direct_cmd, capture_output=True, timeout=60,
+                                  encoding="utf-8", errors="replace")
+        return res
+    except subprocess.TimeoutExpired:
+        if proxy_url and allow_fallback:
+            logger.warning("yt-dlp proxy timed out, falling back to direct connection")
+            direct_cmd = [YT_DLP, "--dump-json", "--no-download"]
+            if extra_args:
+                direct_cmd.extend(extra_args)
+            direct_cmd.append(url)
+            try:
+                return subprocess.run(direct_cmd, capture_output=True, timeout=60,
+                                      encoding="utf-8", errors="replace")
+            except subprocess.TimeoutExpired:
+                raise HTTPException(status_code=504, detail="yt-dlp timed out")
+        raise HTTPException(status_code=504, detail="yt-dlp timed out")
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="yt-dlp timed out")
 
 
 def extract_video_url(data: dict) -> str | None:
@@ -472,6 +555,23 @@ async def proxy_cdn(request: Request, cdn_url: str, source_url: str) -> Streamin
         upstream = await client.send(upstream_request, stream=True)
     except httpx.TimeoutException as exc:
         raise HTTPException(status_code=504, detail=f"CDN timeout: {exc}")
+    except (httpx.ProxyError, httpx.ConnectError) as exc:
+        direct_client: httpx.AsyncClient | None = getattr(request.app.state, "direct_http_client", None)
+        if direct_client and direct_client is not client:
+            logger.warning("CDN proxy streaming failed (%s), falling back to direct client", exc)
+            direct_request = direct_client.build_request(
+                "GET",
+                cdn_url,
+                headers=proxy_headers(source_url, request.headers.get("range")),
+            )
+            try:
+                upstream = await direct_client.send(direct_request, stream=True)
+            except httpx.TimeoutException as d_exc:
+                raise HTTPException(status_code=504, detail=f"CDN timeout: {d_exc}")
+            except httpx.HTTPError as d_exc:
+                raise HTTPException(status_code=502, detail=f"CDN fetch failed: {d_exc}")
+        else:
+            raise HTTPException(status_code=502, detail=f"CDN fetch failed: {exc}")
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"CDN fetch failed: {exc}")
 
@@ -520,10 +620,42 @@ def resolve_and_get_cdn(url: str) -> str:
         try:
             r = subprocess.run(cmd, capture_output=True, timeout=60,
                                encoding="utf-8", errors="replace")
+            if r.returncode != 0 and proxy_url and is_proxy_error(r.stderr):
+                logger.warning("Facebook yt-dlp proxy failed (%s), falling back to direct", r.stderr.strip()[:200])
+                direct_cmd = [
+                    YT_DLP,
+                    "-f",
+                    FACEBOOK_FORMAT,
+                    "--get-url",
+                    "--no-check-certificates",
+                    "--user-agent",
+                    UA,
+                    url,
+                ]
+                r = subprocess.run(direct_cmd, capture_output=True, timeout=60,
+                                   encoding="utf-8", errors="replace")
+        except subprocess.TimeoutExpired:
+            if proxy_url:
+                logger.warning("Facebook yt-dlp proxy timed out, falling back to direct")
+                direct_cmd = [
+                    YT_DLP,
+                    "-f",
+                    FACEBOOK_FORMAT,
+                    "--get-url",
+                    "--no-check-certificates",
+                    "--user-agent",
+                    UA,
+                    url,
+                ]
+                try:
+                    r = subprocess.run(direct_cmd, capture_output=True, timeout=60,
+                                       encoding="utf-8", errors="replace")
+                except subprocess.TimeoutExpired:
+                    raise HTTPException(status_code=504, detail="yt-dlp resolve timed out")
+            else:
+                raise HTTPException(status_code=504, detail="yt-dlp resolve timed out")
         except FileNotFoundError:
             raise HTTPException(status_code=500, detail=f"yt-dlp not found at '{YT_DLP}'")
-        except subprocess.TimeoutExpired:
-            raise HTTPException(status_code=504, detail="yt-dlp resolve timed out")
         if r.returncode != 0:
             scraped = scrape_facebook_og(url)
             if scraped and scraped.get("videoUrl"):
