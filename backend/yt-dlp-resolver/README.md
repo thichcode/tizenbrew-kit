@@ -65,3 +65,9 @@ API_KEY="0123456789abcdef0123456789abcdef" \
 |---|---|---|
 | `API_KEY` | `""` (disabled) | API key accepted through the `X-API-Key` header or supported query parameter |
 | `YT_DLP_PATH` | `yt-dlp` | Path to the yt-dlp binary |
+| `PROXY_USER` | `""` | Proxy username (e.g. on Render to authenticate with Vietnam proxy) |
+| `PROXY_PASS` | `""` | Proxy password |
+| `PROXY_HOST` | `103.195.238.24` | Proxy IP or hostname (defaults to Vietnam server) |
+| `PROXY_PORT` | `443` | Proxy port |
+| `PROXY_URL` | `""` | Full proxy URL (e.g. `http://user:pass@103.195.238.24:443`). Overrides component vars |
+| `ENABLE_PROXY` | `0` | Set `1` to enable proxy without credentials |

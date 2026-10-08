@@ -1,6 +1,7 @@
 import asyncio
 import gzip
 import json
+import os
 import unittest
 from subprocess import CompletedProcess
 from types import SimpleNamespace
@@ -728,10 +729,6 @@ class FacebookFormatTests(unittest.TestCase):
         self.assertTrue(redirect.closed)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class RegionScoringTests(unittest.TestCase):
     VN_URL = "https://video.fhan14-5.fna.fbcdn.net/o1/v/t2/f2/m412/abc.mp4?oh=123"
     US_URL = "https://video-den2-1.xx.fbcdn.net/o1/v/t2/f2/m412/abc.mp4?oh=123"
@@ -747,3 +744,119 @@ class RegionScoringTests(unittest.TestCase):
     def test_pick_returns_none_for_empty(self):
         self.assertIsNone(app.pick_best_region_url([]))
         self.assertIsNone(app.pick_best_region_url(None))
+
+
+class ProxyConfigurationTests(unittest.TestCase):
+    def setUp(self):
+        self.orig_env = os.environ.copy()
+        for key in (
+            "PROXY_URL", "HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
+            "PROXY_USER", "PROXY_PASS", "PROXY_HOST", "PROXY_PORT", "ENABLE_PROXY",
+        ):
+            os.environ.pop(key, None)
+
+    def tearDown(self):
+        for key in (
+            "PROXY_URL", "HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy",
+            "PROXY_USER", "PROXY_PASS", "PROXY_HOST", "PROXY_PORT", "ENABLE_PROXY",
+        ):
+            os.environ.pop(key, None)
+            if key in self.orig_env:
+                os.environ[key] = self.orig_env[key]
+
+    def test_get_proxy_url_returns_none_when_no_env_configured(self):
+        self.assertIsNone(app.get_proxy_url())
+
+    def test_get_proxy_url_uses_default_vn_proxy_with_user_and_pass(self):
+        os.environ["PROXY_USER"] = "myuser"
+        os.environ["PROXY_PASS"] = "mypass123"
+        self.assertEqual(
+            app.get_proxy_url(),
+            "http://myuser:mypass123@103.195.238.24:443",
+        )
+
+    def test_get_proxy_url_custom_host_and_port(self):
+        os.environ["PROXY_HOST"] = "1.2.3.4"
+        os.environ["PROXY_PORT"] = "8080"
+        os.environ["PROXY_USER"] = "u"
+        os.environ["PROXY_PASS"] = "p"
+        self.assertEqual(app.get_proxy_url(), "http://u:p@1.2.3.4:8080")
+
+    def test_get_proxy_url_direct_proxy_url(self):
+        os.environ["PROXY_URL"] = "http://admin:secret@103.195.238.24:443"
+        self.assertEqual(app.get_proxy_url(), "http://admin:secret@103.195.238.24:443")
+
+    def test_get_proxy_url_normalizes_missing_scheme(self):
+        os.environ["PROXY_URL"] = "103.195.238.24:443"
+        self.assertEqual(app.get_proxy_url(), "http://103.195.238.24:443")
+
+    def test_get_proxy_url_quotes_special_characters(self):
+        os.environ["PROXY_USER"] = "user@name"
+        os.environ["PROXY_PASS"] = "pass:word"
+        self.assertEqual(
+            app.get_proxy_url(),
+            "http://user%40name:pass%3Aword@103.195.238.24:443",
+        )
+
+    def test_get_proxy_url_enable_proxy_flag_without_auth(self):
+        os.environ["ENABLE_PROXY"] = "1"
+        self.assertEqual(app.get_proxy_url(), "http://103.195.238.24:443")
+
+    def test_run_yt_dlp_includes_proxy_when_configured(self):
+        os.environ["PROXY_USER"] = "testuser"
+        os.environ["PROXY_PASS"] = "testpass"
+        proxy_url = "http://testuser:testpass@103.195.238.24:443"
+
+        with patch.object(app.subprocess, "run") as mock_run:
+            app.run_yt_dlp("https://www.facebook.com/watch")
+            mock_run.assert_called_once()
+            cmd = mock_run.call_args[0][0]
+            self.assertIn("--proxy", cmd)
+            self.assertEqual(cmd[cmd.index("--proxy") + 1], proxy_url)
+
+    def test_facebook_get_url_includes_proxy_when_configured(self):
+        os.environ["PROXY_USER"] = "testuser"
+        os.environ["PROXY_PASS"] = "testpass"
+        proxy_url = "http://testuser:testpass@103.195.238.24:443"
+
+        completed = CompletedProcess([], 0, stdout=CDN_URL + "\n", stderr="")
+        with patch.object(app.subprocess, "run", return_value=completed) as mock_run:
+            result = app.resolve_and_get_cdn(FACEBOOK_URL)
+            self.assertEqual(result, CDN_URL)
+            cmd = mock_run.call_args[0][0]
+            self.assertIn("--proxy", cmd)
+            self.assertEqual(cmd[cmd.index("--proxy") + 1], proxy_url)
+
+    def test_health_reports_sanitized_proxy_without_credentials(self):
+        os.environ["PROXY_USER"] = "secret_user"
+        os.environ["PROXY_PASS"] = "super_secret_password"
+        health_res = app.health()
+        self.assertTrue(health_res["ok"])
+        self.assertEqual(health_res["version"], "0.4.2")
+        self.assertEqual(health_res["proxy"], "http://103.195.238.24:443")
+        self.assertNotIn("secret_user", str(health_res))
+        self.assertNotIn("super_secret_password", str(health_res))
+
+    def test_build_http_opener_attaches_proxy_handler(self):
+        os.environ["PROXY_USER"] = "u"
+        os.environ["PROXY_PASS"] = "p"
+        opener = app.build_http_opener()
+        proxy_handlers = [h for h in opener.handlers if isinstance(h, app.urllib.request.ProxyHandler)]
+        self.assertTrue(len(proxy_handlers) > 0)
+        self.assertEqual(proxy_handlers[0].proxies.get("http"), "http://u:p@103.195.238.24:443")
+
+    def test_lifespan_configures_proxy_on_async_client(self):
+        os.environ["PROXY_USER"] = "u"
+        os.environ["PROXY_PASS"] = "p"
+        application = SimpleNamespace(state=SimpleNamespace())
+
+        async def run_lifespan():
+            async with app.lifespan(application):
+                return application.state.http_client
+
+        client = asyncio.run(run_lifespan())
+        self.assertIsNotNone(client)
+
+
+if __name__ == "__main__":
+    unittest.main()

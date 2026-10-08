@@ -6,7 +6,7 @@ import subprocess
 import urllib.error
 import urllib.request
 from contextlib import asynccontextmanager
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request
@@ -16,21 +16,69 @@ from pydantic import BaseModel
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 
+DEFAULT_PROXY_HOST = "103.195.238.24"
+DEFAULT_PROXY_PORT = "443"
+
+
+def get_proxy_url() -> str | None:
+    """Return the configured proxy URL, or None if proxy is not enabled.
+
+    Can be configured in Render environment via:
+    - PROXY_URL / HTTP_PROXY / HTTPS_PROXY (full URL e.g. http://user:pass@103.195.238.24:443)
+    - PROXY_USER and PROXY_PASS (host defaults to 103.195.238.24, port to 443)
+    - PROXY_HOST and PROXY_PORT (optional overrides)
+    - ENABLE_PROXY=1 (to enable proxy without authentication if allowed)
+    """
+    for var_name in ("PROXY_URL", "HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+        val = os.environ.get(var_name, "").strip()
+        if val:
+            if not (val.startswith("http://") or val.startswith("https://") or val.startswith("socks5://")):
+                return f"http://{val}"
+            return val
+
+    user = os.environ.get("PROXY_USER", "").strip()
+    password = os.environ.get("PROXY_PASS", "").strip()
+    explicit_host = os.environ.get("PROXY_HOST", "").strip()
+    enable_flag = os.environ.get("ENABLE_PROXY", "").strip().lower() in ("1", "true", "yes")
+
+    if not (user or password or explicit_host or enable_flag):
+        return None
+
+    host = explicit_host or DEFAULT_PROXY_HOST
+    port = os.environ.get("PROXY_PORT", "").strip() or DEFAULT_PROXY_PORT
+
+    if user and password:
+        return f"http://{quote(user)}:{quote(password)}@{host}:{port}"
+    elif user:
+        return f"http://{quote(user)}@{host}:{port}"
+    return f"http://{host}:{port}"
+
+
+# Synchronize environment proxy settings if configured
+_initial_proxy = get_proxy_url()
+if _initial_proxy:
+    for _v in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+        os.environ.setdefault(_v, _initial_proxy)
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     limits = httpx.Limits(max_connections=20, max_keepalive_connections=10)
     timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
-    async with httpx.AsyncClient(
-        limits=limits,
-        timeout=timeout,
-        follow_redirects=False,
-    ) as client:
+    proxy_url = get_proxy_url()
+    client_kwargs = {
+        "limits": limits,
+        "timeout": timeout,
+        "follow_redirects": False,
+    }
+    if proxy_url:
+        client_kwargs["proxy"] = proxy_url
+    async with httpx.AsyncClient(**client_kwargs) as client:
         application.state.http_client = client
         yield
 
 
-app = FastAPI(title="yt-dlp Resolver", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="yt-dlp Resolver", version="0.4.2", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,6 +115,14 @@ class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
         return None
 
 
+def build_http_opener(*custom_handlers) -> urllib.request.OpenerDirector:
+    handlers = list(custom_handlers)
+    proxy_url = get_proxy_url()
+    if proxy_url:
+        handlers.append(urllib.request.ProxyHandler({"http": proxy_url, "https": proxy_url}))
+    return urllib.request.build_opener(*handlers)
+
+
 # ─── TikTok Resolver ─────────────────────────────────────────────
 
 def extract_video_id(url: str) -> str | None:
@@ -86,7 +142,8 @@ def tiktok_try_api(video_id: str) -> dict | None:
         "Referer": "https://www.tiktok.com/",
     })
     try:
-        resp = urllib.request.urlopen(req, timeout=15)
+        opener = build_http_opener()
+        resp = opener.open(req, timeout=15)
         data = json.loads(resp.read().decode())
         item = (data.get("itemInfo") or {}).get("itemStruct") or {}
         video = item.get("video") or {}
@@ -169,7 +226,7 @@ def is_youtube_url(url: str) -> bool:
 
 
 def tiktok_open_url(url: str):
-    opener = urllib.request.build_opener(NoRedirectHandler())
+    opener = build_http_opener(NoRedirectHandler())
     current_url = url
     redirect_count = 0
 
@@ -210,7 +267,8 @@ def scrape_facebook_og(url: str) -> dict | None:
         "Accept-Language": "en-US,en;q=0.9",
     })
     try:
-        resp = urllib.request.urlopen(req, timeout=15)
+        opener = build_http_opener()
+        resp = opener.open(req, timeout=15)
         html = resp.read().decode("utf-8", errors="replace")
 
         def extract_meta(property_name: str) -> str | None:
@@ -277,6 +335,9 @@ def check_api_key(x_api_key: str | None = None) -> None:
 # allowlisting and the dedicated unprivileged service constrain them operationally.
 def run_yt_dlp(url: str, extra_args: list[str] | None = None) -> subprocess.CompletedProcess:
     cmd = [YT_DLP, "--dump-json", "--no-download"]
+    proxy_url = get_proxy_url()
+    if proxy_url:
+        cmd.extend(["--proxy", proxy_url])
     if extra_args:
         cmd.extend(extra_args)
     cmd.append(url)
@@ -451,8 +512,11 @@ def resolve_and_get_cdn(url: str) -> str:
             "--no-check-certificates",
             "--user-agent",
             UA,
-            url,
         ]
+        proxy_url = get_proxy_url()
+        if proxy_url:
+            cmd.extend(["--proxy", proxy_url])
+        cmd.append(url)
         try:
             r = subprocess.run(cmd, capture_output=True, timeout=60,
                                encoding="utf-8", errors="replace")
@@ -582,7 +646,13 @@ def build_bilibili_dash_mpd(source_url: str) -> str:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "version": "0.4.1"}
+    proxy = get_proxy_url()
+    proxy_host = None
+    if proxy:
+        parsed = urlparse(proxy)
+        host_port = parsed.netloc.split("@")[-1]
+        proxy_host = f"{parsed.scheme}://{host_port}"
+    return {"ok": True, "version": "0.4.2", "proxy": proxy_host}
 
 
 @app.get("/resolve", response_model=ResolveResponse)
@@ -686,7 +756,11 @@ def dash(url: str, x_api_key: str | None = Header(None), api_key: str | None = Q
 
 async def stream_merged(source_url: str, format_spec: str) -> StreamingResponse:
     cmd = [YT_DLP, "-f", format_spec, "--merge-output-format", "mp4",
-           "--user-agent", UA, "-o", "-", source_url]
+           "--user-agent", UA]
+    proxy_url = get_proxy_url()
+    if proxy_url:
+        cmd.extend(["--proxy", proxy_url])
+    cmd.extend(["-o", "-", source_url])
     try:
         process = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
