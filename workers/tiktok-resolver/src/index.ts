@@ -1,6 +1,6 @@
 import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
 import { resolveFacebookUrl, parseFacebookHtml, pickBestVideoUrl, regionScore } from './resolver-facebook';
-import { renderSetupPage } from './setup-page';
+import { renderSetupPage, renderCodePromptPage } from './setup-page';
 import { generateShortcutXml } from './shortcut-builder';
 
 interface FeedItem {
@@ -207,7 +207,7 @@ async function callFallbackResolver(env: Env, url: string): Promise<{ videoUrl: 
 
 async function handleSetup(url: URL): Promise<Response> {
   const code = url.searchParams.get('code');
-  if (!isValidCode(code)) return json({ error: 'Missing or invalid code' }, 400);
+  if (!isValidCode(code)) return html(renderCodePromptPage(WORKER_URL), 400);
   return html(renderSetupPage(code, WORKER_URL));
 }
 

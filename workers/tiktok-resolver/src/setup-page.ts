@@ -65,6 +65,10 @@ export function renderSetupPage(code: string, workerUrl: string): string {
     <div class="code-box">
       <div class="code-label">Mã kết nối TV của bạn</div>
       <div class="code">${escapeHtml(code)}</div>
+      <div style="margin:14px auto 4px;display:flex;flex-direction:column;align-items:center;gap:8px">
+        <img class="setup-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(workerUrl + '/setup?code=' + code)}" alt="QR Code kết nối TV" style="width:180px;height:180px;border-radius:12px;background:#fff;padding:8px;box-sizing:border-box;box-shadow:0 4px 12px rgba(0,0,0,0.5)" />
+        <span style="font-size:12px;color:#8a8a8a">Quét mã QR bằng iPhone để mở nhanh trang kết nối này</span>
+      </div>
     </div>
 
     <!-- IPHONE SHORTCUT SECTION -->
@@ -266,4 +270,44 @@ export function renderSetupPage(code: string, workerUrl: string): string {
 </body>
 </html>`;
 }
+
+
+export function renderCodePromptPage(workerUrl: string): string {
+  return `<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShortVideo TV - Kết nối thiết bị</title>
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#070707;color:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px;box-sizing:border-box}
+    main{width:min(92vw,480px);background:#121212;border:1px solid #2a2a2a;border-radius:16px;padding:24px;box-sizing:border-box}
+    h1{margin:0 0 8px;font-size:24px;text-align:center}
+    .sub{color:#8a8a8a;font-size:14px;text-align:center;margin-bottom:20px}
+    .hint-box{background:#181818;border:1px solid #333;border-radius:12px;padding:16px;margin-bottom:20px;font-size:13px;color:#ccc;line-height:1.6}
+    .hint-box strong{color:#58a6ff}
+    input{width:100%;height:48px;border-radius:10px;border:1px solid #333;background:#0d0d0d;color:#f4f4f4;padding:0 12px;font-size:18px;text-align:center;text-transform:uppercase;letter-spacing:4px;font-weight:700;box-sizing:border-box}
+    button{margin-top:12px;width:100%;height:48px;border-radius:10px;border:none;background:#e94560;color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:0.15s ease}
+    button:hover{background:#d63c55}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ShortVideo TV</h1>
+    <div class="sub">Kết nối điện thoại với Tivi</div>
+    <div class="hint-box">
+      📺 <strong>Mã kết nối và mã QR ở đâu?</strong><br>
+      1. Bật ứng dụng <strong>ShortVideo TV</strong> trên màn hình Tivi.<br>
+      2. Màn hình TV sẽ hiển thị <strong>mã QR</strong> và <strong>mã chữ (ví dụ: TV123456)</strong>.<br>
+      3. Dùng điện thoại quét trực tiếp mã QR trên TV, hoặc nhập mã hiển thị trên TV vào ô dưới đây:
+    </div>
+    <form onsubmit="event.preventDefault(); var c=document.getElementById('code').value.trim(); if(c) location.href='${escapeJs(workerUrl)}/setup?code='+encodeURIComponent(c);">
+      <input id="code" type="text" placeholder="Ví dụ: TVABC123" required autofocus />
+      <button type="submit">Vào trang kết nối TV</button>
+    </form>
+  </main>
+</body>
+</html>`;
+}
+
 
