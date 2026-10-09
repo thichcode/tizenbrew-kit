@@ -105,20 +105,15 @@
           if (data.ok && data.resolved) {
             if (data.resolved.videoUrl) {
               item.videoUrl = data.resolved.videoUrl;
-            } else {
-              item.videoUrl = item._redirectUrl;
             }
             if (data.resolved.title) {
               item.title = data.resolved.title;
               updateItemTitleInDom(item.id, data.resolved.title);
             }
-          } else {
-            item.videoUrl = item._redirectUrl;
           }
           callback(item);
         })
         .catch(function () {
-          item.videoUrl = item._redirectUrl;
           callback(item);
         });
       return;
@@ -427,8 +422,6 @@
   var currentMediaLoadStartHandler = null;
   var mediaLoadStartedAttemptId = 0;
   var failedMediaAttemptId = 0;
-  var pendingMediaFailureTimer = null;
-  var mediaFailureScheduleId = 0;
 
   function closePlayer() {
     isPlayerOpen = false;
@@ -443,11 +436,6 @@
     if (playerTimeEl) playerTimeEl.textContent = '';
     playRequestId += 1;
     mediaAttemptId += 1;
-    mediaFailureScheduleId += 1;
-    if (pendingMediaFailureTimer) {
-      clearTimeout(pendingMediaFailureTimer);
-      pendingMediaFailureTimer = null;
-    }
     clearTimeout(loadTimeout);
     if (playerEl) playerEl.classList.remove('active');
     if (playerLoadingEl) playerLoadingEl.style.display = 'none';
@@ -474,7 +462,6 @@
     setTimeout(focusSelected, 60);
   }
 
-  var sourceFallbackStage = 0;
   var stallCount = 0;
   var netStatsEl = null;
   var netStatsTimer = null;
@@ -485,36 +472,22 @@
 
   function handleMediaAttemptFailure(item, requestId, attemptId, error) {
     if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId) return;
+    if (failedMediaAttemptId === attemptId) return;
+    failedMediaAttemptId = attemptId;
 
-    var isSourceError = error && typeof error.code === 'number';
-    if (failedMediaAttemptId === attemptId) {
-      if (!isSourceError || !pendingMediaFailureTimer) return;
-      clearTimeout(pendingMediaFailureTimer);
-      pendingMediaFailureTimer = null;
-      mediaFailureScheduleId += 1;
-    } else {
-      failedMediaAttemptId = attemptId;
-    }
-
-    if (!isSourceError) {
-      var scheduleId = ++mediaFailureScheduleId;
-      pendingMediaFailureTimer = setTimeout(function () {
-        if (!isPlayerOpen || requestId !== playRequestId || attemptId !== mediaAttemptId || scheduleId !== mediaFailureScheduleId) return;
-        pendingMediaFailureTimer = null;
-        if (tryNextFallback(item, requestId)) return;
-        showPlaybackError('Cannot play: ' + (error && error.message ? error.message : 'format not supported'));
-      }, 0);
+    // No automatic link refresh: play the feed URL as-is and surface the
+    // failure instead of retrying through redirect/proxy endpoints.
+    if (error && typeof error.code === 'number') {
+      var code = error.code || 0;
+      var msg = 'Unknown error';
+      if (code === 1) msg = 'Video load aborted';
+      else if (code === 2) msg = 'Network error';
+      else if (code === 3) msg = 'Decoding failed (codec not supported)';
+      else if (code === 4) msg = 'Format not supported on this TV';
+      showPlaybackError('Playback error: ' + msg + ' (code ' + code + ')');
       return;
     }
-
-    if (tryNextFallback(item, requestId)) return;
-    var code = error.code || 0;
-    var msg = 'Unknown error';
-    if (code === 1) msg = 'Video load aborted';
-    else if (code === 2) msg = 'Network error';
-    else if (code === 3) msg = 'Decoding failed (codec not supported)';
-    else if (code === 4) msg = 'Format not supported on this TV';
-    showPlaybackError('Playback error: ' + msg + ' (code ' + code + ')');
+    showPlaybackError('Cannot play: ' + (error && error.message ? error.message : 'format not supported'));
   }
 
   function formatCdnOrSource(href) {
@@ -556,11 +529,6 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     }
 
     var attemptId = ++mediaAttemptId;
-    mediaFailureScheduleId += 1;
-    if (pendingMediaFailureTimer) {
-      clearTimeout(pendingMediaFailureTimer);
-      pendingMediaFailureTimer = null;
-    }
     if (currentMediaErrorHandler) video.removeEventListener('error', currentMediaErrorHandler);
     if (currentMediaLoadStartHandler) video.removeEventListener('loadstart', currentMediaLoadStartHandler);
 
@@ -594,37 +562,7 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     }
   }
 
-  function tryNextFallback(item, requestId) {
-    if (!isPlayerOpen || requestId !== playRequestId || !item) return false;
-    if (item.source !== 'Facebook' && item.source !== 'Bilibili') return false;
-    if (item.source === 'Bilibili') return false;
-
-    var fallbackUrl;
-    if (sourceFallbackStage === 0) {
-      fallbackUrl = item._redirectUrl;
-      if (playerLoadingEl) {
-        playerLoadingEl.style.display = 'block';
-        playerLoadingEl.style.color = '#888';
-        playerLoadingEl.textContent = 'Refreshing video URL...';
-      }
-    } else if (sourceFallbackStage === 1) {
-      fallbackUrl = item._proxyUrl;
-      if (playerLoadingEl) {
-        playerLoadingEl.style.display = 'block';
-        playerLoadingEl.style.color = '#888';
-        playerLoadingEl.textContent = 'Retrying via proxy...';
-      }
-    } else {
-      return false;
-    }
-    if (!fallbackUrl) return false;
-
-    sourceFallbackStage += 1;
-    startMediaAttempt(item, requestId, fallbackUrl, true);
-    return true;
-  }
-
-  var APP_VERSION = '1.2.23';
+  var APP_VERSION = '1.2.24';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -1013,7 +951,6 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     pollTimer = safeClearInterval(pollTimer);
     suggestPollTimer = safeClearInterval(suggestPollTimer);
     var requestId = ++playRequestId;
-    sourceFallbackStage = 0;
     stallCount = 0;
     avStopTick();
     if (useAv) { avCloseQuiet(); useAv = false; }
@@ -1034,7 +971,6 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
 
     resolveItem(item, function (resolved) {
       if (!isPlayerOpen || requestId !== playRequestId) return;
-      if ((resolved.source === 'Facebook' || resolved.source === 'Bilibili') && resolved.videoUrl === resolved._redirectUrl) sourceFallbackStage = 1;
       if (playerTitleEl) playerTitleEl.textContent = (resolved.title || '').length > 100 ? (resolved.title || '').slice(0, 100) + '…' : (resolved.title || '');
       video.autoplay = true;
       video.controls = false;

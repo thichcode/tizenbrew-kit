@@ -334,32 +334,26 @@ describe('Public ShortVideo TV package format', () => {
     expect(testSource).not.toContain(retiredOrigin);
   });
 
-  it('plays pre-resolved Facebook URLs through direct, redirect, and proxy stages', async () => {
-    var harness = createInjectHarness([undefined, undefined, undefined]);
+  it('plays pre-resolved Facebook URLs directly and reports errors without retrying', async () => {
+    var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
 
     expect(harness.elements.feed.children.length).toBe(1);
     expect(function () { harness.elements.feed.children[0].events.click(); }).not.toThrow();
-    expect(harness.assignedSources[0]).toBe('https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4');
+    expect(harness.assignedSources).toEqual(['https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4']);
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.assignedSources[1]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
-    expect(harness.elements['player-loading'].textContent).toBe('Refreshing video URL...');
-    expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.assignedSources[2]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
-    expect(harness.elements['player-loading'].textContent).toBe('Retrying via proxy...');
-    expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.assignedSources).toHaveLength(3);
+    expect(harness.assignedSources).toHaveLength(1);
     expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
     expect(harness.elements['player-loading'].style.display).toBe('block');
     expect(harness.elements['player-loading'].textContent).toContain('Playback error');
     expect(harness.fetchCalls.some(function (url) { return url.indexOf('/resolve?') !== -1; })).toBe(false);
   });
 
-  it('resolves unresolved Facebook URLs before direct, redirect, and proxy playback', async () => {
+  it('resolves unresolved Facebook URLs once, then plays without retrying', async () => {
     var sourceUrl = 'https://www.facebook.com/reel/456';
     var resolvedUrl = 'https://video.xx.fbcdn.net/v/t42.1790-2/resolved.mp4';
-    var harness = createInjectHarness([undefined, undefined, undefined], {
+    var harness = createInjectHarness([undefined], {
       feedItems: [{
         id: 'fb-2',
         title: 'Unresolved Facebook clip',
@@ -382,28 +376,28 @@ describe('Public ShortVideo TV package format', () => {
     expect(harness.fetchCalls.some(function (url) {
       return url === 'https://find-football-tizenbrew.onrender.com/resolve?url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456';
     })).toBe(true);
-    expect(harness.assignedSources[0]).toBe(resolvedUrl);
+    expect(harness.assignedSources).toEqual([resolvedUrl]);
     expect(harness.assignedSources[0]).not.toContain('/play?');
     harness.elements.video.events.error();
-    expect(harness.assignedSources[1]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456&api_key=299145bbcefca5e3dd0f193dc6d187b0');
-    harness.elements.video.events.error();
-    expect(harness.assignedSources[2]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources).toHaveLength(1);
+    expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
   });
 
-  it('does not assume video error fallback playback returns a Promise', async () => {
-    var harness = createInjectHarness([undefined, undefined, undefined]);
+  it('shows a playback error without throwing when video errors', async () => {
+    var harness = createInjectHarness([undefined]);
 
     await loadHarnessFeed(harness);
     harness.elements.feed.children[0].events.click();
 
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
     expect(function () { harness.elements.video.events.error(); }).not.toThrow();
-    expect(harness.elements.video.src).toBe('https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.elements.video.src).toBe('https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4');
+    expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
     expect(harness.fetchCalls.some(function (url) { return url.indexOf('/resolve?') !== -1; })).toBe(false);
   });
 
-  it('advances rejected play calls through both Facebook fallbacks before failing', async () => {
-    var harness = createInjectHarness(['reject', 'reject', 'reject']);
+  it('fails fast with an error message when play rejects', async () => {
+    var harness = createInjectHarness(['reject']);
 
     await loadHarnessFeed(harness);
 
@@ -411,16 +405,14 @@ describe('Public ShortVideo TV package format', () => {
     harness.runTimers();
     expect(harness.assignedSources).toEqual([
       'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4',
-      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
-      'https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
     expect(harness.elements.error.textContent).toBe('Cannot play: direct playback failed');
     expect(harness.elements['player-loading'].style.display).toBe('block');
     expect(harness.elements['player-loading'].textContent).toContain('Cannot play');
   });
 
-  it('does not advance past redirect when one direct attempt rejects and errors', async () => {
-    var harness = createInjectHarness(['reject', undefined], { autoLoadStart: false });
+  it('shows an error on the first failure without requesting a fresh URL', async () => {
+    var harness = createInjectHarness([undefined], { autoLoadStart: false });
 
     await loadHarnessFeed(harness);
     harness.elements.feed.children[0].events.click();
@@ -432,13 +424,13 @@ describe('Public ShortVideo TV package format', () => {
 
     expect(harness.assignedSources).toEqual([
       'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4',
-      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
+    expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
   });
 
-  it('ignores a delayed direct play rejection after redirect playback starts', async () => {
+  it('ignores a delayed play rejection after the failure was already reported', async () => {
     var directPlay = deferred();
-    var harness = createInjectHarness([directPlay.promise, undefined]);
+    var harness = createInjectHarness([directPlay.promise]);
 
     await loadHarnessFeed(harness);
     harness.elements.feed.children[0].events.click();
@@ -448,8 +440,8 @@ describe('Public ShortVideo TV package format', () => {
 
     expect(harness.assignedSources).toEqual([
       'https://video.xx.fbcdn.net/v/t42.1790-2/video.mp4',
-      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2F123&api_key=299145bbcefca5e3dd0f193dc6d187b0',
     ]);
+    expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
   });
 
   it('ignores an old source error after a different item opens', async () => {
@@ -480,13 +472,14 @@ describe('Public ShortVideo TV package format', () => {
     expect(harness.assignedSources).toEqual([firstVideoUrl, secondVideoUrl]);
 
     harness.elements.video.events.error();
-    expect(harness.assignedSources[2]).toBe('https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Fsecond&api_key=299145bbcefca5e3dd0f193dc6d187b0');
+    expect(harness.assignedSources).toEqual([firstVideoUrl, secondVideoUrl]);
+    expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
   });
 
-  it('resets Facebook fallback stages when a different item opens', async () => {
+  it('opens each item with a single attempt and reports errors without retrying', async () => {
     var firstVideoUrl = 'https://video.xx.fbcdn.net/v/t42.1790-2/first.mp4';
     var secondVideoUrl = 'https://video.xx.fbcdn.net/v/t42.1790-2/second.mp4';
-    var harness = createInjectHarness([undefined, undefined, undefined, undefined, undefined], {
+    var harness = createInjectHarness([undefined, undefined], {
       feedItems: [{
         id: 'fb-first',
         title: 'First Facebook clip',
@@ -509,13 +502,8 @@ describe('Public ShortVideo TV package format', () => {
     harness.elements.feed.children[1].events.click();
     harness.elements.video.events.error();
 
-    expect(harness.assignedSources).toEqual([
-      firstVideoUrl,
-      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Ffirst&api_key=299145bbcefca5e3dd0f193dc6d187b0',
-      'https://find-football-tizenbrew.onrender.com/play?mode=proxy&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Ffirst&api_key=299145bbcefca5e3dd0f193dc6d187b0',
-      secondVideoUrl,
-      'https://find-football-tizenbrew.onrender.com/play?mode=redirect&url=https%3A%2F%2Fwww.facebook.com%2Freel%2Fsecond&api_key=299145bbcefca5e3dd0f193dc6d187b0',
-    ]);
+    expect(harness.assignedSources).toEqual([firstVideoUrl, secondVideoUrl]);
+    expect(harness.elements.error.textContent).toBe('Playback error: Format not supported on this TV (code 4)');
   });
 
   it('ignores stale video errors after the player closes', async () => {

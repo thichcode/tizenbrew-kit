@@ -55,15 +55,16 @@ The player includes an active HUD board enabled by default:
    - Khi đang xem Facebook Reels trên iPhone, bấm nút **Chia sẻ (Share)** $\rightarrow$ chọn **ShortVideo to TV** (hoặc chia sẻ liên kết tới phím tắt).
    - Video sẽ lập tức xuất hiện và tự động phát trên màn hình tivi!
 
-## Playback Fallback Chain
+## Playback (no automatic link refresh)
 
-Each item is attempted in order until one starts without a media error:
+Each item plays its feed `videoUrl` exactly once. If playback fails, the
+player shows the error instead of silently retrying through redirect/proxy
+endpoints. Unresolved items are resolved a single time via
+`GET /resolve` before the first attempt; a failed resolve leaves the URL
+untouched and the attempt reports the failure.
 
-1. **Direct CDN** — resolved fbcdn URL, lowest latency
-2. **Redirect** — `GET /play?mode=redirect`, refreshes the signed URL
-3. **Proxy** — `GET /play?mode=proxy`, streams through the resolver
-
-Bilibili requires Android TV and never enters the web chain.
+Bilibili requires Android TV. On Android builds the bridge still opens the
+fresh `/play?mode=redirect` URL because the native player has no retry path.
 
 ## Backend
 
