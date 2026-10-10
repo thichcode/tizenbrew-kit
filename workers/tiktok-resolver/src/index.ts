@@ -656,6 +656,10 @@ export default {
       if (isGetOrHead && url.pathname === '/resolve-debug') return handleResolveDebug(request);
       if (isGetOrHead && url.pathname === '/proxy') return handleProxy(request, env);
       if (isGetOrHead && url.pathname === '/stream') return handleStream(request);
+      if (isGetOrHead && url.pathname === '/debug-last') {
+        const last = await env.FEED_ITEMS.get('debug:last-submit-html');
+        return json({ ok: true, last: last ? JSON.parse(last) : null });
+      }
 
       return json({ error: 'Not found' }, 404);
     } catch (err) {

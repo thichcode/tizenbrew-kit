@@ -57,11 +57,29 @@ const US_EDGE_CODES = [
 const ASIA_EDGE_RE = new RegExp(`(?:^|[-.])f?(?:${ASIA_EDGE_CODES.join('|')})(?=\\d|[-.]|$)`, 'i');
 const US_EDGE_RE = new RegExp(`(?:^|[-.])(?:${US_EDGE_CODES.join('|')})(?=\\d|[-.]|$)`, 'i');
 
+export function isUnsupportedCodec(url: string): boolean {
+  if (/dash_vp9|vp09|dash_av1|av01|audio_only|dash_opus/i.test(url)) return true;
+  try {
+    const u = new URL(url);
+    const efg = u.searchParams.get('efg');
+    if (efg) {
+      const decoded = atob(efg);
+      if (/dash_vp9|vp09|dash_av1|av01|audio_only|dash_opus/i.test(decoded)) {
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
+
 export function regionScore(url: string): number {
   try {
     const host = new URL(url).hostname;
-    if (ASIA_EDGE_RE.test(host)) return 100;
-    if (US_EDGE_RE.test(host)) return -50;
+    let score = 0;
+    if (ASIA_EDGE_RE.test(host)) score = 100;
+    else if (US_EDGE_RE.test(host)) score = -50;
+    if (isUnsupportedCodec(url)) score -= 1000;
+    return score;
   } catch {}
   return 0;
 }
@@ -123,13 +141,13 @@ export function parseFacebookHtml(html: string, url: string): ResolvedItem | nul
     extractJsonString(html, 'playable_url'),
     extractJsonString(html, 'sd_src'),
     extractJsonString(html, 'sd_src_no_ratelimit'),
-    extractOgMeta(html, 'og:video:secure_url'),
-    extractOgMeta(html, 'og:video:url'),
-    extractOgMeta(html, 'og:video'),
     extractJsonString(html, 'browser_native_hd_url'),
     extractJsonString(html, 'playable_url_quality_hd'),
     extractJsonString(html, 'hd_src'),
     extractJsonString(html, 'hd_src_no_ratelimit'),
+    extractOgMeta(html, 'og:video:secure_url'),
+    extractOgMeta(html, 'og:video:url'),
+    extractOgMeta(html, 'og:video'),
     extractJsonString(html, 'video_url'),
     extractJsonString(html, 'base_url'),
     ...extractDirectFbcdnMp4s(html),

@@ -477,20 +477,36 @@
 
     if (error && typeof error.code === 'number') {
       var code = error.code || 0;
-      // Code 3 = MEDIA_ERR_DECODE: codec not supported (e.g. AV1 on Tizen 3).
-      // Retry once through the yt-dlp backend redirect which guarantees H.264.
-      if (code === 3 && item && item.source === 'Facebook' && item._redirectUrl && !item._codecRetried) {
+      // Code 3 = MEDIA_ERR_DECODE: codec not supported (e.g. AV1/VP9 on Tizen 3).
+      // Query fallback resolver for direct H.264 stream and play directly.
+      if (code === 3 && item && item.source === 'Facebook' && !item._codecRetried) {
         item._codecRetried = true;
         if (playerLoadingEl) {
           playerLoadingEl.style.display = 'block';
           playerLoadingEl.style.color = '#ff9800';
-          playerLoadingEl.textContent = 'Codec lỗi, đang thử link H.264...';
+          playerLoadingEl.textContent = 'Codec lỗi, đang lấy link H.264...';
         }
-        var retryAttemptId = ++mediaAttemptId;
-        failedMediaAttemptId = 0;
-        if (!avStart(item, requestId, item._redirectUrl)) {
-          startMediaAttempt(item, requestId, item._redirectUrl, true);
-        }
+        var resolveUrl = FALLBACK_RESOLVER_URL + '/resolve?url=' + encodeURIComponent(item.sourceUrl);
+        fetch(resolveUrl, {
+          headers: { 'X-API-Key': FALLBACK_API_KEY }
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (!isPlayerOpen || requestId !== playRequestId) return;
+            if (data && data.ok && data.resolved && data.resolved.videoUrl && data.resolved.videoUrl !== item.videoUrl) {
+              item.videoUrl = data.resolved.videoUrl;
+              failedMediaAttemptId = 0;
+              if (playerLoadingEl) playerLoadingEl.textContent = 'Đang phát link H.264...';
+              if (!avStart(item, requestId, item.videoUrl)) {
+                startMediaAttempt(item, requestId, item.videoUrl, true);
+              }
+            } else {
+              showPlaybackError('Video này dùng định dạng TV không hỗ trợ giải mã');
+            }
+          })
+          .catch(function () {
+            showPlaybackError('Không thể lấy link H.264 từ server dự phòng');
+          });
         return;
       }
       var msg = 'Unknown error';
@@ -576,7 +592,7 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     }
   }
 
-  var APP_VERSION = '1.2.26';
+  var APP_VERSION = '1.2.27';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
