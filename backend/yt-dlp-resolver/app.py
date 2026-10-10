@@ -356,8 +356,10 @@ def scrape_facebook_og(url: str) -> dict | None:
                 return u if u.startswith("http") else None
             return None
 
-        # Uu tien HD truoc SD. UA la Tizen TV nen Facebook tu tra H.264 cho ca HD,
-        # khong can rot xuong SD. SD chi la fallback khi khong co URL HD nao.
+        # Uu tien HD truoc SD. SD chi la fallback khi khong co URL HD nao.
+        # Luu y: Facebook tra HD co the la AV1 -> TV Samsung cu khong decode duoc.
+        # Khi do, yt-dlp voi FACEBOOK_FORMAT (best[vcodec^=avc1]) moi lay dung ban H.264;
+        # duong nay la fallback khi yt-dlp fail, nen uu tien chat luong hon.
         video_url = (
             extract_json_url("browser_native_hd_url")
             or extract_json_url("playable_url_quality_hd")
