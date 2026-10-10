@@ -576,7 +576,7 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     }
   }
 
-  var APP_VERSION = '1.2.24';
+  var APP_VERSION = '1.2.26';
   var useAv = false;
   var avObjEl = null;
   var avPrepareTimer = null;
@@ -986,6 +986,23 @@ function startMediaAttempt(item, requestId, sourceUrl, shouldPlay) {
     resolveItem(item, function (resolved) {
       if (!isPlayerOpen || requestId !== playRequestId) return;
       if (playerTitleEl) playerTitleEl.textContent = (resolved.title || '').length > 100 ? (resolved.title || '').slice(0, 100) + '…' : (resolved.title || '');
+
+      var vUrl = resolved.videoUrl || '';
+      var isDirectMedia = vUrl && (
+        vUrl.indexOf('fbcdn.net') !== -1 ||
+        vUrl.indexOf('bilivideo.com') !== -1 ||
+        vUrl.indexOf('tiktokcdn') !== -1 ||
+        vUrl.indexOf('.mp4') !== -1 ||
+        vUrl.indexOf('.m3u8') !== -1 ||
+        vUrl.indexOf('/play?') !== -1 ||
+        vUrl.indexOf('/dash?') !== -1
+      ) && vUrl !== resolved.sourceUrl;
+
+      if (!isDirectMedia) {
+        showPlaybackError('Chưa lấy được link video trực tiếp. Vui lòng chia sẻ lại bài viết này.');
+        return;
+      }
+
       video.autoplay = true;
       video.controls = false;
       if (!avStart(resolved, requestId, resolved.videoUrl)) {

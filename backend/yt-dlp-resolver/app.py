@@ -141,8 +141,7 @@ YOUTUBE_CDN_HOST_SUFFIXES = ("googlevideo.com", "youtube.com")
 VIDEO_CDN_HOST_SUFFIXES = ("fbcdn.net", "bilivideo.com", *TIKTOK_CDN_HOST_SUFFIXES, *YOUTUBE_CDN_HOST_SUFFIXES)
 
 BILIBILI_FORMAT = "bestvideo[ext=mp4][vcodec^=avc1]+bestaudio/bestvideo+bestaudio/best"
-# Use Tizen 3 TV User-Agent so Facebook serves H.264/AVC instead of AV1 streams
-UA = "Mozilla/5.0 (SMART-TV; LINUX; Tizen 3.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/3.0 TV Safari/537.36"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 TIKTOK_REDIRECT_STATUSES = (301, 302, 303, 307, 308)
 
 
