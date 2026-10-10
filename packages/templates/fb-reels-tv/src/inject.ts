@@ -475,10 +475,24 @@
     if (failedMediaAttemptId === attemptId) return;
     failedMediaAttemptId = attemptId;
 
-    // No automatic link refresh: play the feed URL as-is and surface the
-    // failure instead of retrying through redirect/proxy endpoints.
     if (error && typeof error.code === 'number') {
       var code = error.code || 0;
+      // Code 3 = MEDIA_ERR_DECODE: codec not supported (e.g. AV1 on Tizen 3).
+      // Retry once through the yt-dlp backend redirect which guarantees H.264.
+      if (code === 3 && item && item.source === 'Facebook' && item._redirectUrl && !item._codecRetried) {
+        item._codecRetried = true;
+        if (playerLoadingEl) {
+          playerLoadingEl.style.display = 'block';
+          playerLoadingEl.style.color = '#ff9800';
+          playerLoadingEl.textContent = 'Codec lỗi, đang thử link H.264...';
+        }
+        var retryAttemptId = ++mediaAttemptId;
+        failedMediaAttemptId = 0;
+        if (!avStart(item, requestId, item._redirectUrl)) {
+          startMediaAttempt(item, requestId, item._redirectUrl, true);
+        }
+        return;
+      }
       var msg = 'Unknown error';
       if (code === 1) msg = 'Video load aborted';
       else if (code === 2) msg = 'Network error';

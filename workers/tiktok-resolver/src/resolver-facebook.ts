@@ -160,7 +160,9 @@ export async function resolveFacebookUrl(url: string): Promise<ResolvedItem | nu
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        // Use a Tizen-era UA (Chrome 56) so Facebook serves H.264/AVC
+        // streams instead of AV1 which Samsung Tizen 3 TVs cannot decode.
+        'User-Agent': 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 3.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/3.0 TV Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
