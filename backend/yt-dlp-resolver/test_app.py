@@ -898,6 +898,29 @@ class ProxyConfigurationTests(unittest.TestCase):
             # Second attempt was direct
             self.assertNotIn("--proxy", mock_run.call_args_list[1][0][0])
 
+    def test_scrape_facebook_og_uu_tien_hd_truoc_sd(self):
+        """UA la Tizen TV nen Facebook tra H.264 cho ca HD -> phai chon HD truoc SD."""
+        # Facebook escape JSON trong HTML: \u002F cho "https://" va \/ cho dau "/".
+        html_bytes = (
+            b'<html><script>{"browser_native_sd_url":"https:\\u002F\\u002Fvideo.xx.fbcdn.net\\/SD.mp4",'
+            b'"browser_native_hd_url":"https:\\u002F\\u002Fvideo.xx.fbcdn.net\\/HD.mp4"}</script></html>'
+        )
+        opener = SimpleNamespace(open=unittest.mock.Mock(return_value=FakeUrlResponse(200, body=html_bytes)))
+        with patch.object(app, "build_http_opener", return_value=opener):
+            result = app.scrape_facebook_og(FACEBOOK_URL)
+        self.assertEqual(result["videoUrl"], "https://video.xx.fbcdn.net/HD.mp4")
+
+    def test_scrape_facebook_og_fallback_sd_khi_khong_co_hd(self):
+        """Khong co URL HD -> duoc phep rớt xuong SD thay vì tra loi."""
+        html_bytes = (
+            b'<html><script>{"browser_native_sd_url":"https:\\u002F\\u002Fvideo.xx.fbcdn.net\\/SD.mp4"}'
+            b"</script></html>"
+        )
+        opener = SimpleNamespace(open=unittest.mock.Mock(return_value=FakeUrlResponse(200, body=html_bytes)))
+        with patch.object(app, "build_http_opener", return_value=opener):
+            result = app.scrape_facebook_og(FACEBOOK_URL)
+        self.assertEqual(result["videoUrl"], "https://video.xx.fbcdn.net/SD.mp4")
+
     def test_scrape_facebook_og_auto_fallback_on_proxy_error(self):
         os.environ["PROXY_USER"] = "u"
         os.environ["PROXY_PASS"] = "p"
