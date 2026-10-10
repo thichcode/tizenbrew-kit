@@ -115,7 +115,14 @@ function extractDirectFbcdnMp4s(html: string): string[] {
 }
 
 export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
+  // Prioritize progressive H.264 streams (browser_native_sd_url, playable_url, sd_src)
+  // over HD streams (browser_native_hd_url, og:video) because Facebook encodes HD in
+  // AV1 (av01), which Samsung Tizen 3 TVs cannot decode (causing MEDIA_ERR_DECODE code 3).
   const videoUrl = pickBestVideoUrl([
+    extractJsonString(html, 'browser_native_sd_url'),
+    extractJsonString(html, 'playable_url'),
+    extractJsonString(html, 'sd_src'),
+    extractJsonString(html, 'sd_src_no_ratelimit'),
     extractOgMeta(html, 'og:video:secure_url'),
     extractOgMeta(html, 'og:video:url'),
     extractOgMeta(html, 'og:video'),
@@ -123,10 +130,6 @@ export function parseFacebookHtml(html: string, url: string): ResolvedItem | nul
     extractJsonString(html, 'playable_url_quality_hd'),
     extractJsonString(html, 'hd_src'),
     extractJsonString(html, 'hd_src_no_ratelimit'),
-    extractJsonString(html, 'browser_native_sd_url'),
-    extractJsonString(html, 'playable_url'),
-    extractJsonString(html, 'sd_src'),
-    extractJsonString(html, 'sd_src_no_ratelimit'),
     extractJsonString(html, 'video_url'),
     extractJsonString(html, 'base_url'),
     ...extractDirectFbcdnMp4s(html),
