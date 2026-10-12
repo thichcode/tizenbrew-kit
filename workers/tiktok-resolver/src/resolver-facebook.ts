@@ -79,6 +79,12 @@ export function regionScore(url: string): number {
     if (ASIA_EDGE_RE.test(host)) score = 100;
     else if (US_EDGE_RE.test(host)) score = -50;
     if (isUnsupportedCodec(url)) score -= 1000;
+    // Quality bonus: HD/720p/1080p gets extra points over SD
+    if (/720p|1080p|hd_clean|tag=dash_h264|tag=sve_hd/i.test(url)) {
+      score += 20;
+    } else if (/360p|480p|tag=sve_sd/i.test(url)) {
+      score += 5;
+    }
     return score;
   } catch {}
   return 0;
@@ -133,18 +139,18 @@ function extractDirectFbcdnMp4s(html: string): string[] {
 }
 
 export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
-  // Prioritize progressive H.264 streams (browser_native_sd_url, playable_url, sd_src)
-  // over HD streams (browser_native_hd_url, og:video) because Facebook encodes HD in
-  // AV1 (av01), which Samsung Tizen 3 TVs cannot decode (causing MEDIA_ERR_DECODE code 3).
+  // Prioritize HD streams (browser_native_hd_url, hd_src) over SD streams.
+  // Unsupported VP9/AV1 codecs are penalized by isUnsupportedCodec, automatically
+  // falling back to progressive H.264 SD when HD is not decodable on Tizen 3.
   const videoUrl = pickBestVideoUrl([
-    extractJsonString(html, 'browser_native_sd_url'),
-    extractJsonString(html, 'playable_url'),
-    extractJsonString(html, 'sd_src'),
-    extractJsonString(html, 'sd_src_no_ratelimit'),
     extractJsonString(html, 'browser_native_hd_url'),
     extractJsonString(html, 'playable_url_quality_hd'),
     extractJsonString(html, 'hd_src'),
     extractJsonString(html, 'hd_src_no_ratelimit'),
+    extractJsonString(html, 'browser_native_sd_url'),
+    extractJsonString(html, 'playable_url'),
+    extractJsonString(html, 'sd_src'),
+    extractJsonString(html, 'sd_src_no_ratelimit'),
     extractOgMeta(html, 'og:video:secure_url'),
     extractOgMeta(html, 'og:video:url'),
     extractOgMeta(html, 'og:video'),
