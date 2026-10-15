@@ -1,5 +1,6 @@
 package com.shortvideo.tv;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +14,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
@@ -27,12 +29,14 @@ public class PlayerActivity extends AppCompatActivity {
     private Handler timeoutHandler;
     private Runnable timeoutRunnable;
     private TextView errorView;
+    private String videoUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         String videoUrl = getIntent().getStringExtra("videoUrl");
+        this.videoUrl = videoUrl;
 
         FrameLayout root = new FrameLayout(this);
 
@@ -71,8 +75,9 @@ public class PlayerActivity extends AppCompatActivity {
 
         DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
                 .setDefaultRequestProperties(headers)
-                .setConnectTimeoutMs(15000)
-                .setReadTimeoutMs(30000);
+                .setAllowCrossProtocolRedirects(true)
+                .setConnectTimeoutMs(20000)
+                .setReadTimeoutMs(60000);
 
         player = new ExoPlayer.Builder(this)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory))
@@ -91,9 +96,7 @@ public class PlayerActivity extends AppCompatActivity {
             @Override
             public void onPlayerError(PlaybackException error) {
                 clearTimeout();
-                String msg = error.getLocalizedMessage();
-                if (msg == null) msg = "Playback error";
-                showError(msg);
+                showError(describeError(error));
             }
         });
 
@@ -108,7 +111,7 @@ public class PlayerActivity extends AppCompatActivity {
         };
         // Facebook URLs now route through the resolver's /play endpoint, so the
         // first request includes a yt-dlp resolve. Allow for a cold backend.
-        timeoutHandler.postDelayed(timeoutRunnable, 45000);
+        timeoutHandler.postDelayed(timeoutRunnable, 90000);
 
         if (videoUrl != null) {
             MediaItem mediaItem = MediaItem.fromUri(videoUrl);
@@ -133,6 +136,35 @@ public class PlayerActivity extends AppCompatActivity {
         if (player != null) {
             player.stop();
         }
+    }
+
+    // Build a detailed, readable error so playback problems can be diagnosed
+    // directly on the TV screen (error code, cause chain, HTTP status).
+    private String describeError(PlaybackException error) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Khong phat duoc video\n");
+        sb.append("Code: ").append(error.getErrorCodeName());
+        Throwable cause = error.getCause();
+        int depth = 0;
+        while (cause != null && depth < 4) {
+            sb.append("\n- ").append(cause.getClass().getSimpleName());
+            String m = cause.getMessage();
+            if (m != null && !m.isEmpty()) {
+                sb.append(": ").append(m);
+            }
+            if (cause instanceof HttpDataSource.InvalidResponseCodeException) {
+                sb.append(" (HTTP ").append(((HttpDataSource.InvalidResponseCodeException) cause).responseCode).append(")");
+            }
+            cause = cause.getCause();
+            depth += 1;
+        }
+        if (videoUrl != null && !videoUrl.isEmpty()) {
+            try {
+                sb.append("\nHost: ").append(Uri.parse(videoUrl).getHost());
+            } catch (Exception ignored) {
+            }
+        }
+        return sb.toString();
     }
 
     @Override

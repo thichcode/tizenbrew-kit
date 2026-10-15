@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'android/**'
+      - 'packages/templates/fb-reels-tv/**'
+      - '.github/workflows/android-release.yml'
   workflow_dispatch:
 
 permissions:

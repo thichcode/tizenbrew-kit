@@ -25,10 +25,13 @@ public class MainActivity extends Activity {
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         webView.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         webView.setWebViewClient(new WebViewClient());
-        webView.loadUrl("file:///android_asset/web/index.html");
+        // Register the JS bridge BEFORE loading the page, otherwise the web app
+        // can boot before window.AndroidBridge exists and falls back to the
+        // HTML5 <video> player, which cannot play Facebook CDN streams.
         webView.addJavascriptInterface(new VideoBridge(webView), "AndroidBridge");
 
         setContentView(webView);
+        webView.loadUrl("file:///android_asset/web/index.html");
     }
 
     @Override
