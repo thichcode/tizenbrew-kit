@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
 <title>Stream Reels – demo2</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -355,6 +356,9 @@
     doPlay(title);
   }
 
+  var currentPlayUrl = '';
+  var fallbackAttempted = false;
+
   function playItem(item) {
     placeholder.style.display = 'none';
     video.src = '';
@@ -362,14 +366,40 @@
     setStatus('loading', 'Resolving & streaming…');
     log('Feed play: ' + (item.title || '').substring(0, 60), 'info');
 
+    currentPlayUrl = item.sourceUrl || item.videoUrl || '';
+    fallbackAttempted = false;
+
+    // 1. If item already has a resolved direct CDN URL, play directly
+    if (item.videoUrl && /^https?:\/\//.test(item.videoUrl) && item.videoUrl !== item.sourceUrl) {
+      log('Playing pre-resolved stream', 'info');
+      video.src = item.videoUrl;
+      video.load();
+      video.play().catch(function () {});
+      return;
+    }
+
     var src = item.sourceUrl || '';
     var isFb = /facebook\.com|fb\.watch/.test(src);
 
     if (isFb) {
-      var playUrl = '/api/play?url=' + encodeURIComponent(src);
-      video.src = playUrl;
-      video.load();
-      video.play().catch(function () {});
+      // 2. Try /api/resolve first, fallback to /api/play
+      fetch(RESOLVE_URL + '?url=' + encodeURIComponent(src))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.ok && data.resolved && data.resolved.videoUrl) {
+            log('Resolved to direct CDN URL', 'ok');
+            video.src = data.resolved.videoUrl;
+          } else {
+            video.src = '/api/play?url=' + encodeURIComponent(src);
+          }
+          video.load();
+          video.play().catch(function () {});
+        })
+        .catch(function () {
+          video.src = '/api/play?url=' + encodeURIComponent(src);
+          video.load();
+          video.play().catch(function () {});
+        });
     } else {
       video.src = WORKER_URL + '/proxy?url=' + encodeURIComponent(src);
       video.load();
@@ -391,17 +421,46 @@
     playBtn.disabled = true;
     playBtn.textContent = '…';
 
-    video.src = '/api/play?url=' + encodeURIComponent(rawUrl);
-    video.load();
+    currentPlayUrl = rawUrl;
+    fallbackAttempted = false;
 
-    video.play().then(function () {
-      var elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
-      log('Playing! (' + elapsed + 's to first frame)', 'ok');
-      setStatus('playing', 'Playing');
-    }).catch(function (e) {
-      setStatus('error', 'Play failed');
-      log('PLAY ERROR: ' + e.message + ' (code ' + (video.error ? video.error.code : '?') + ')', 'err');
-    });
+    var isFb = /facebook\.com|fb\.watch/.test(rawUrl);
+    if (isFb) {
+      fetch(RESOLVE_URL + '?url=' + encodeURIComponent(rawUrl))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.ok && data.resolved && data.resolved.videoUrl) {
+            log('Resolved to direct CDN URL', 'ok');
+            video.src = data.resolved.videoUrl;
+          } else {
+            video.src = '/api/play?url=' + encodeURIComponent(rawUrl);
+          }
+          video.load();
+          return video.play();
+        })
+        .then(function () {
+          var elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+          log('Playing! (' + elapsed + 's to first frame)', 'ok');
+          setStatus('playing', 'Playing');
+        })
+        .catch(function (e) {
+          if (!fallbackAttempted) {
+            video.src = '/api/play?url=' + encodeURIComponent(rawUrl);
+            video.load();
+            video.play().catch(function () {});
+          }
+        });
+    } else {
+      video.src = WORKER_URL + '/proxy?url=' + encodeURIComponent(rawUrl);
+      video.load();
+      video.play().then(function () {
+        var elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+        log('Playing! (' + elapsed + 's)', 'ok');
+        setStatus('playing', 'Playing');
+      }).catch(function (e) {
+        setStatus('error', 'Play failed');
+      });
+    }
   }
 
   // ─── video events ─────────────────────────────────────
@@ -423,8 +482,19 @@
   video.addEventListener('error', function () {
     var c = video.error ? video.error.code : 0;
     var msgs = {1:'Aborted',2:'Network error',3:'Decode error',4:'Format not supported'};
-    setStatus('error', msgs[c] || 'Error ' + c);
     log('Video error: ' + (msgs[c] || 'code ' + c), 'err');
+
+    if (!fallbackAttempted && currentPlayUrl) {
+      fallbackAttempted = true;
+      log('Retrying via Cloudflare Worker proxy…', 'warn');
+      setStatus('loading', 'Retrying via proxy…');
+      video.src = WORKER_URL + '/proxy?url=' + encodeURIComponent(currentPlayUrl);
+      video.load();
+      video.play().catch(function () {});
+      return;
+    }
+
+    setStatus('error', msgs[c] || 'Error ' + c);
   });
   video.addEventListener('ended', function () { setStatus('idle', 'Ended'); log('Playback ended', 'ok'); });
   video.addEventListener('loadstart', function () { log('Video load started', 'info'); });

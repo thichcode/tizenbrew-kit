@@ -9,7 +9,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing or invalid url' });
   }
 
-  const backend = process.env.BACKEND_URL || 'https://find-football-tizenbrew.onrender.com';
+  let backend = process.env.BACKEND_URL;
+  if (!backend || backend.includes('84.8.220.24') || backend.includes('shortvideo-resolver.fly.dev') || backend.includes('shortvideo-resolver.onrender.com')) {
+    backend = 'https://find-football-tizenbrew.onrender.com';
+  }
   const apiKey = process.env.BACKEND_API_KEY || '299145bbcefca5e3dd0f193dc6d187b0';
 
   try {

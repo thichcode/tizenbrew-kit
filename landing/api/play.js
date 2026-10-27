@@ -9,8 +9,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing or invalid url' });
   }
 
-  const backend = process.env.BACKEND_URL || 'http://84.8.220.24:8000';
+  let backend = process.env.BACKEND_URL;
+  if (!backend || backend.includes('84.8.220.24') || backend.includes('shortvideo-resolver.fly.dev') || backend.includes('shortvideo-resolver.onrender.com')) {
+    backend = 'https://find-football-tizenbrew.onrender.com';
+  }
   const apiKey = process.env.BACKEND_API_KEY || '299145bbcefca5e3dd0f193dc6d187b0';
+
+  // Support redirect mode (default) to avoid Vercel 10s Serverless timeout on video streaming
+  const mode = req.query.mode || 'redirect';
+  if (mode === 'redirect') {
+    const redirectUrl = `${backend}/play?mode=redirect&url=${encodeURIComponent(url)}&api_key=${encodeURIComponent(apiKey)}`;
+    return res.redirect(302, redirectUrl);
+  }
 
   const playUrl = `${backend}/play?mode=proxy&url=${encodeURIComponent(url)}&api_key=${encodeURIComponent(apiKey)}`;
 
