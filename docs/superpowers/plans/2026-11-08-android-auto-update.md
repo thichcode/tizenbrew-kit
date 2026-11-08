@@ -37,11 +37,11 @@
 - Modify: `workers/tiktok-resolver/src/index.ts`
 - Test: `workers/tiktok-resolver/test/index.test.ts`
 
-- [ ] Step 1: Add `/api/app-version` handler returning current versions and download URLs.
-- [ ] Step 2: Add `/web/inject.js` handler serving the latest web bundle.
-- [ ] Step 3: Write tests in `workers/tiktok-resolver/test/index.test.ts` for `/api/app-version`.
-- [ ] Step 4: Run `npx vitest run test/index.test.ts` to ensure all tests pass.
-- [ ] Step 5: Deploy Worker via `npx wrangler deploy`.
+- [x] Step 1: Add `/api/app-version` handler returning current versions and download URLs.
+- [x] Step 2: Add `/web/inject.js` handler serving the latest web bundle.
+- [x] Step 3: Write tests in `workers/tiktok-resolver/test/index.test.ts` for `/api/app-version`.
+- [x] Step 4: Run `npx vitest run test/index.test.ts` to ensure all tests pass.
+- [x] Step 5: Deploy Worker via `npx wrangler deploy`.
 
 ---
 
@@ -51,9 +51,9 @@
 - Create: `android/ShortVideoTV/app/src/main/res/xml/file_paths.xml`
 - Modify: `android/ShortVideoTV/app/src/main/AndroidManifest.xml`
 
-- [ ] Step 1: Create `file_paths.xml` declaring external-cache-path and cache-path.
-- [ ] Step 2: Add `REQUEST_INSTALL_PACKAGES` permission to `AndroidManifest.xml`.
-- [ ] Step 3: Add `androidx.core.content.FileProvider` to `<application>` in `AndroidManifest.xml`.
+- [x] Step 1: Create `file_paths.xml` declaring external-cache-path and cache-path.
+- [x] Step 2: Add `REQUEST_INSTALL_PACKAGES` permission to `AndroidManifest.xml`.
+- [x] Step 3: Add `androidx.core.content.FileProvider` to `<application>` in `AndroidManifest.xml`.
 
 ---
 
@@ -62,9 +62,9 @@
 **Files:**
 - Create: `android/ShortVideoTV/app/src/main/java/com/shortvideo/tv/UpdateManager.java`
 
-- [ ] Step 1: Implement `checkAndUpdate(Activity activity)` running on background executor.
-- [ ] Step 2: Implement OTA Web Bundle fetch: compare version, download `inject.js.tmp`, atomically rename to `filesDir/web/inject.js`.
-- [ ] Step 3: Implement Native APK download & prompt: compare `apkVersionCode`, download `ShortVideoTV.apk` to cache, show TV-friendly AlertDialog with "Cập nhật" button invoking `FileProvider` install intent.
+- [x] Step 1: Implement `checkAndUpdate(Activity activity)` running on background executor.
+- [x] Step 2: Implement OTA Web Bundle fetch: compare version, download `inject.js.tmp`, atomically rename to `filesDir/web/inject.js`.
+- [x] Step 3: Implement Native APK download & prompt: compare `apkVersionCode`, download `ShortVideoTV.apk` to cache, show TV-friendly AlertDialog with "Cập nhật" button invoking `FileProvider` install intent.
 
 ---
 
@@ -73,14 +73,14 @@
 **Files:**
 - Modify: `android/ShortVideoTV/app/src/main/java/com/shortvideo/tv/MainActivity.java`
 
-- [ ] Step 1: Override `WebViewClient.shouldInterceptRequest` to serve `filesDir/web/inject.js` when present instead of asset.
-- [ ] Step 2: Call `UpdateManager.checkAndUpdate(this)` in `MainActivity.onCreate`.
-- [ ] Step 3: Verify build via `./gradlew assembleDebug` in `android/ShortVideoTV`.
+- [x] Step 1: Override `WebViewClient.shouldInterceptRequest` to serve `filesDir/web/inject.js` when present instead of asset.
+- [x] Step 2: Call `UpdateManager.checkAndUpdate(this)` in `MainActivity.onCreate`.
+- [x] Step 3: Verify build via `./gradlew assembleDebug` in `android/ShortVideoTV`.
 
 ---
 
 ### Task 5: Verification & Git Commit
 
-- [ ] Step 1: Test Worker endpoint with curl.
-- [ ] Step 2: Verify Android compilation and APK packaging.
-- [ ] Step 3: Git commit and push changes to trigger GitHub Release build.
+- [x] Step 1: Test Worker endpoint with curl.
+- [x] Step 2: Verify Android compilation and APK packaging.
+- [x] Step 3: Git commit and push changes to trigger GitHub Release build.
