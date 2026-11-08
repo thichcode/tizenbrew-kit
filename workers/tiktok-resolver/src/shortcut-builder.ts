@@ -1,5 +1,6 @@
 export function generateShortcutXml(code: string, workerUrl: string): string {
   const uuid1 = 'BB3F8390-9474-486C-A0F7-5435F9DD5D05';
+  const uuid_norm = 'C852174F-71DF-4A73-A656-78480371A49B';
   const uuid2 = '92E19B30-9FA8-408A-AAF2-2B8A90A7CBCA';
   const uuid3 = 'D4480AA4-8F4B-48E8-9A2C-AC2F711D955F';
 
@@ -16,6 +17,43 @@ export function generateShortcutXml(code: string, workerUrl: string): string {
 			<dict>
 				<key>UUID</key>
 				<string>${uuid1}</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>WFWorkflowActionIdentifier</key>
+			<string>is.workflow.actions.text.replace</string>
+			<key>WFWorkflowActionParameters</key>
+			<dict>
+				<key>UUID</key>
+				<string>${uuid_norm}</string>
+				<key>WFReplaceTextFind</key>
+				<string>/share/[rvp]/</string>
+				<key>WFReplaceTextReplace</key>
+				<string>/reel/</string>
+				<key>WFReplaceTextCaseSensitive</key>
+				<false/>
+				<key>WFReplaceTextRegularExpression</key>
+				<true/>
+				<key>WFInput</key>
+				<dict>
+					<key>Value</key>
+					<dict>
+						<key>attachmentsByRange</key>
+						<dict>
+							<key>{0, 1}</key>
+							<dict>
+								<key>OutputUUID</key>
+								<string>${uuid1}</string>
+								<key>Type</key>
+								<string>ActionOutput</string>
+							</dict>
+						</dict>
+						<key>string</key>
+						<string>&#xfffc;</string>
+					</dict>
+					<key>WFSerializationType</key>
+					<string>WFTextTokenString</string>
+				</dict>
 			</dict>
 		</dict>
 		<dict>
@@ -71,7 +109,7 @@ export function generateShortcutXml(code: string, workerUrl: string): string {
 							<key>{0, 1}</key>
 							<dict>
 								<key>OutputUUID</key>
-								<string>${uuid1}</string>
+								<string>${uuid_norm}</string>
 								<key>Type</key>
 								<string>ActionOutput</string>
 							</dict>
@@ -147,7 +185,7 @@ export function generateShortcutXml(code: string, workerUrl: string): string {
 											<key>{0, 1}</key>
 											<dict>
 												<key>OutputUUID</key>
-												<string>${uuid1}</string>
+												<string>${uuid_norm}</string>
 												<key>Type</key>
 												<string>ActionOutput</string>
 											</dict>

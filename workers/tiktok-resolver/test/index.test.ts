@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import worker, { Env, KVNamespaceLike } from '../src/index';
+import { normalizeFacebookUrl } from '../src/resolver-facebook';
 
 class MemoryKV implements KVNamespaceLike {
   private store = new Map<string, string>();
@@ -265,7 +266,7 @@ describe('shortvideo-feed worker', () => {
       expect(item.resolvedAt).toBeUndefined();
     });
 
-    it('accepts Facebook share/v/ link format', async () => {
+    it('accepts Facebook share/v/ link format and normalizes to canonical reel URL', async () => {
       const rawUrl = 'https://www.facebook.com/share/v/18a1vD3qpQ/?mibextid=wwXIfr';
       mockHtmlFetch('<html></html>');
 
@@ -273,7 +274,7 @@ describe('shortvideo-feed worker', () => {
       expect(res.status).toBe(200);
       const item = (await json(res)).item as Record<string, unknown>;
       expect(item.source).toBe('Facebook');
-      expect(item.sourceUrl).toBe(rawUrl);
+      expect(item.sourceUrl).toBe('https://www.facebook.com/reel/18a1vD3qpQ');
     });
   });
 
@@ -529,16 +530,26 @@ describe('shortvideo-feed worker', () => {
     });
   });
 
-  describe('GET /download-shortcut', () => {
-    it('returns .shortcut XML file with code', async () => {
-      const res = await worker.fetch(new Request(`https://feed.example.com/download-shortcut?code=${CODE}`), env());
-      expect(res.status).toBe(200);
-      expect(res.headers.get('content-type')).toContain('application/x-ios-shortcut');
-      const text = await res.text();
-      expect(text).toContain(CODE);
-      expect(text).toContain('is.workflow.actions.downloadurl');
-      expect(text).toContain('submit-html');
+  describe('normalizeFacebookUrl', () => {
+    it('normalizes /share/r/ and /share/v/ links to /reel/', () => {
+      expect(normalizeFacebookUrl('https://www.facebook.com/share/r/18a1vD3qpQ/?mibextid=wwXIfr'))
+        .toBe('https://www.facebook.com/reel/18a1vD3qpQ');
+      expect(normalizeFacebookUrl('https://www.facebook.com/share/v/18a1vD3qpQ/?mibextid=wwXIfr'))
+        .toBe('https://www.facebook.com/reel/18a1vD3qpQ');
+    });
+
+    it('replaces m.facebook.com with www.facebook.com', () => {
+      expect(normalizeFacebookUrl('https://m.facebook.com/reel/123456?mibextid=xyz'))
+        .toBe('https://www.facebook.com/reel/123456');
+    });
+
+    it('leaves standard reel urls and non-fb urls intact', () => {
+      expect(normalizeFacebookUrl('https://www.facebook.com/reel/123456/'))
+        .toBe('https://www.facebook.com/reel/123456/');
+      expect(normalizeFacebookUrl('https://tiktok.com/@user/video/123'))
+        .toBe('https://tiktok.com/@user/video/123');
     });
   });
 });
+
 

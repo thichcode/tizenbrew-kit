@@ -138,7 +138,27 @@ function extractDirectFbcdnMp4s(html: string): string[] {
     .filter((u) => !/audio|bytestart=|byteend=|\.mpd/i.test(u));
 }
 
+export function normalizeFacebookUrl(url: string): string {
+  if (!url) return url;
+  let normalized = url.trim();
+  // Convert /share/r/ID, /share/v/ID, /share/p/ID to /reel/ID
+  normalized = normalized.replace(/\/(?:share|m)\/[rvp]\/([a-zA-Z0-9_-]+)\/?/i, '/reel/$1');
+  // Convert m.facebook.com to www.facebook.com
+  normalized = normalized.replace(/^https?:\/\/m\.facebook\.com/i, 'https://www.facebook.com');
+  // Strip ephemeral tracking query params that cause Facebook to trigger login walls
+  try {
+    const u = new URL(normalized);
+    const trackingKeys = ['mibextid', 'rdid', 'wtsid', '_rdr', 'refsrc', 'extid', '_fb_noscript'];
+    for (const key of trackingKeys) {
+      u.searchParams.delete(key);
+    }
+    normalized = u.toString();
+  } catch {}
+  return normalized;
+}
+
 export function parseFacebookHtml(html: string, url: string): ResolvedItem | null {
+  const normalizedUrl = normalizeFacebookUrl(url);
   // Prioritize HD streams (browser_native_hd_url, hd_src) over SD streams.
   // Unsupported VP9/AV1 codecs are penalized by isUnsupportedCodec, automatically
   // falling back to progressive H.264 SD when HD is not decodable on Tizen 3.
@@ -161,7 +181,7 @@ export function parseFacebookHtml(html: string, url: string): ResolvedItem | nul
 
   if (!videoUrl) return null;
 
-  const canonicalUrl = extractOgMeta(html, 'og:url') || url;
+  const canonicalUrl = extractOgMeta(html, 'og:url') || normalizedUrl;
   const title = extractOgMeta(html, 'og:title') || 'Facebook Video';
   const thumbnail = extractOgMeta(html, 'og:image');
   const videoId =
@@ -169,9 +189,9 @@ export function parseFacebookHtml(html: string, url: string): ResolvedItem | nul
     canonicalUrl.match(/\/v\/(\w+)/)?.[1] ||
     canonicalUrl.match(/\/r\/(\w+)/)?.[1] ||
     canonicalUrl.match(/\/videos\/(\d+)/)?.[1] ||
-    url.match(/\/reel\/(\d+)/)?.[1] ||
-    url.match(/\/v\/(\w+)/)?.[1] ||
-    url.match(/\/r\/(\w+)/)?.[1] ||
+    normalizedUrl.match(/\/reel\/(\d+)/)?.[1] ||
+    normalizedUrl.match(/\/v\/(\w+)/)?.[1] ||
+    normalizedUrl.match(/\/r\/(\w+)/)?.[1] ||
     '';
 
   return {
@@ -184,8 +204,9 @@ export function parseFacebookHtml(html: string, url: string): ResolvedItem | nul
 }
 
 export async function resolveFacebookUrl(url: string): Promise<ResolvedItem | null> {
+  const normalizedUrl = normalizeFacebookUrl(url);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(normalizedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -200,7 +221,7 @@ export async function resolveFacebookUrl(url: string): Promise<ResolvedItem | nu
     });
     if (!res.ok) return null;
     const html = await res.text();
-    return parseFacebookHtml(html, url);
+    return parseFacebookHtml(html, normalizedUrl);
   } catch {
     return null;
   }

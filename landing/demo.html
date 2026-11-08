@@ -291,6 +291,16 @@
     }
   }
 
+  function normalizeFacebookUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    var cleaned = url.trim();
+    cleaned = cleaned.replace(/^https?:\/\/m\.facebook\.com\//i, 'https://www.facebook.com/');
+    cleaned = cleaned.replace(/\/(?:share|m)\/[rvp]\/([a-zA-Z0-9_-]+)\/?/i, '/reel/$1');
+    cleaned = cleaned.replace(/([?&])(?:mibextid|rdid|wtsid|_rdr|refsrc|extid|_fb_noscript)=[^&]*/gi, '');
+    cleaned = cleaned.replace(/[?&]+$/, '').replace(/\?&/, '?');
+    return cleaned;
+  }
+
   function playItem(item) {
     playerTitle.textContent = item.title || 'Playing...';
     playerError.style.display = 'none';
@@ -298,7 +308,7 @@
     playerOverlay.classList.add('active');
     isPlayerOpen = true;
 
-    var src = item.sourceUrl || '';
+    var src = normalizeFacebookUrl(item.sourceUrl || '');
     var isFb = /facebook\.com|fb\.watch/.test(src);
     if (isFb) {
       fetch(RESOLVE_URL + '?url=' + encodeURIComponent(src))

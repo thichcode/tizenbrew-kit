@@ -262,6 +262,28 @@ def is_facebook_url(url: str) -> bool:
     return bool(re.search(r"(?:www\.|m\.)?(?:facebook\.com|fb\.watch)", url))
 
 
+def normalize_facebook_url(url: str) -> str:
+    if not url:
+        return url
+    url = url.strip()
+    # Normalize /share/r/ID, /share/v/ID, /share/p/ID to /reel/ID
+    url = re.sub(r"/(?:share|m)/[rvp]/([a-zA-Z0-9_-]+)/?", r"/reel/\1", url)
+    # Normalize m.facebook.com to www.facebook.com
+    url = re.sub(r"^https?://m\.facebook\.com", "https://www.facebook.com", url)
+    # Strip tracking query parameters that cause login redirects or yt-dlp issues
+    try:
+        parsed = urlparse(url)
+        if "facebook.com" in (parsed.hostname or ""):
+            query = urllib.parse.parse_qs(parsed.query)
+            for k in ["mibextid", "rdid", "wtsid", "_rdr", "refsrc", "extid", "_fb_noscript"]:
+                query.pop(k, None)
+            new_query = urllib.parse.urlencode(query, doseq=True)
+            url = urllib.parse.urlunparse(parsed._replace(query=new_query))
+    except Exception:
+        pass
+    return url
+
+
 def is_bilibili_url(url: str) -> bool:
     return bool(re.search(r"(?:www\.)?bilibili\.tv", url))
 
@@ -320,6 +342,7 @@ def tiktok_open_url(url: str):
 
 
 def scrape_facebook_og(url: str) -> dict | None:
+    url = normalize_facebook_url(url)
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -651,6 +674,7 @@ def resolve_and_get_cdn(url: str) -> str:
         raise HTTPException(status_code=422, detail="Failed to resolve TikTok URL")
 
     if is_facebook_url(url):
+        url = normalize_facebook_url(url)
         cmd = [
             YT_DLP,
             "-f",
@@ -716,6 +740,8 @@ def resolve_and_get_cdn(url: str) -> str:
             return scraped["videoUrl"]
         raise HTTPException(status_code=422, detail="No video URL found")
 
+    if is_facebook_url(url):
+        url = normalize_facebook_url(url)
     if is_bilibili_url(url):
         extra_args = ["-f", BILIBILI_FORMAT, "--user-agent", UA]
         r = run_yt_dlp(url, extra_args)
@@ -851,6 +877,7 @@ def resolve(url: str, x_api_key: str | None = Header(None)):
 
     extra_args = None
     if is_facebook_url(url):
+        url = normalize_facebook_url(url)
         extra_args = [
             "-f",
             FACEBOOK_FORMAT,
@@ -972,6 +999,8 @@ async def play(request: Request, url: str, mode: str = Query("proxy"),
     if mode not in ("redirect", "proxy", "merge"):
         raise HTTPException(status_code=400, detail="Invalid mode")
 
+    if is_facebook_url(url):
+        url = normalize_facebook_url(url)
     if is_bilibili_url(url):
         if mode == "proxy":
             return await stream_merged(url, BILIBILI_FORMAT)

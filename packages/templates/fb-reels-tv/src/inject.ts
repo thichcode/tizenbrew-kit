@@ -89,8 +89,19 @@
     }
   }
 
+  function normalizeFacebookUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    var cleaned = url.trim();
+    cleaned = cleaned.replace(/^https?:\/\/m\.facebook\.com\//i, 'https://www.facebook.com/');
+    cleaned = cleaned.replace(/\/(?:share|m)\/[rvp]\/([a-zA-Z0-9_-]+)\/?/i, '/reel/$1');
+    cleaned = cleaned.replace(/([?&])(?:mibextid|rdid|wtsid|_rdr|refsrc|extid|_fb_noscript)=[^&]*/gi, '');
+    cleaned = cleaned.replace(/[?&]+$/, '').replace(/\?&/, '?');
+    return cleaned;
+  }
+
   function resolveItem(item, callback) {
     if (item.source === 'Facebook') {
+      if (item.sourceUrl) item.sourceUrl = normalizeFacebookUrl(item.sourceUrl);
       setFacebookFallbacks(item);
       if (isPreResolvedFacebook(item)) {
         callback(item);
@@ -141,6 +152,7 @@
   }
 
   function setFacebookFallbacks(item) {
+    if (item.sourceUrl) item.sourceUrl = normalizeFacebookUrl(item.sourceUrl);
     item._redirectUrl = buildFacebookPlayUrl(item.sourceUrl, 'redirect');
     item._proxyUrl = buildFacebookPlayUrl(item.sourceUrl, 'proxy');
   }
@@ -184,11 +196,15 @@
         );
       })
       .map(function (item) {
+        var sUrl = isHttpUrl(item.sourceUrl) ? item.sourceUrl : '';
+        if (item.source === 'Facebook' && sUrl) {
+          sUrl = normalizeFacebookUrl(sUrl);
+        }
         return {
           id: item.id,
           title: item.title,
           source: item.source,
-          sourceUrl: isHttpUrl(item.sourceUrl) ? item.sourceUrl : '',
+          sourceUrl: sUrl,
           videoUrl: item.videoUrl,
           thumbnailUrl: isHttpUrl(item.thumbnailUrl) ? item.thumbnailUrl : '',
           duration: typeof item.duration === 'number' ? item.duration : 0,

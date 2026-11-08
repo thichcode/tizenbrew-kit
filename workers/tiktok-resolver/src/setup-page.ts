@@ -104,8 +104,11 @@ export function renderSetupPage(code: string, workerUrl: string): string {
             <strong>Bước 2:</strong> Bấm biểu tượng <strong>(i)</strong> ở thanh dưới cùng -> bật <strong>Hiện trong Bảng chia sẻ</strong> (Nhận: URL, Văn bản).
           </div>
           <div class="ios-step">
+            <strong>Bước 2b (quan trọng):</strong> Thêm tác vụ <strong>Thay thế văn bản</strong> (Replace Text): Tìm <code>/(?:share|m)/[rvp]/([a-zA-Z0-9_-]+)</code> thay bằng <code>/reel/$1</code> trong <code>Đầu vào của phím tắt</code> (hoặc tải trực tiếp file .shortcut ở trên đã được cấu hình sẵn) để tự động đổi link chia sẻ thành link Reel công khai.
+          </div>
+          <div class="ios-step">
             <strong>Bước 3:</strong> Thêm tác vụ: <strong>Nhận nội dung của URL</strong> (Get Contents of URL):<br>
-            - URL: chọn biến <code>Đầu vào của phím tắt</code> (Shortcut Input).<br>
+            - URL: chọn kết quả thay thế văn bản ở Bước 2b (hoặc <code>Đầu vào của phím tắt</code>).<br>
             - <strong>BẮT BUỘC:</strong> mở rộng tác vụ -&gt; mục <strong>Tiêu đề (Headers)</strong> -&gt; thêm tiêu đề mới:<br>
             &nbsp;&bull; Tên (Key): <code>User-Agent</code><br>
             &nbsp;&bull; Giá trị (Value): <span class="ios-code">Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1</span> <button class="btn-copy" onclick="copyText('Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1')">Sao chép</button><br>

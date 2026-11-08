@@ -1,5 +1,5 @@
 import { resolveTikTokUrl, debugResolveTikTok } from './resolver';
-import { resolveFacebookUrl, parseFacebookHtml, pickBestVideoUrl, regionScore } from './resolver-facebook';
+import { resolveFacebookUrl, parseFacebookHtml, pickBestVideoUrl, regionScore, normalizeFacebookUrl } from './resolver-facebook';
 import { renderSetupPage, renderCodePromptPage } from './setup-page';
 import { generateShortcutXml } from './shortcut-builder';
 
@@ -165,8 +165,9 @@ function deduplicate(items: FeedItem[]): FeedItem[] {
 async function callFallbackResolver(env: Env, url: string): Promise<{ videoUrl: string; title: string; thumbnailUrl: string | null } | null> {
   const baseUrl = env.FALLBACK_RESOLVER_URL;
   if (!baseUrl) return null;
+  const normalizedUrl = normalizeFacebookUrl(url);
 
-  const cache = cacheKey(url);
+  const cache = cacheKey(normalizedUrl);
   const cached = await env.FEED_ITEMS.get(cache);
   if (cached) {
     try {
@@ -189,7 +190,7 @@ async function callFallbackResolver(env: Env, url: string): Promise<{ videoUrl: 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
   try {
-    const res = await fetch(`${baseUrl}/resolve?url=${encodeURIComponent(url)}`, { headers, signal: controller.signal });
+    const res = await fetch(`${baseUrl}/resolve?url=${encodeURIComponent(normalizedUrl)}`, { headers, signal: controller.signal });
     if (!res.ok) return null;
     const data = await res.json() as { ok: boolean; resolved?: { videoUrl: string; title: string; thumbnailUrl?: string | null } };
     if (!data.ok || !isValidUrl(data.resolved?.videoUrl)) return null;
@@ -225,7 +226,8 @@ async function handleSubmit(request: Request, env: Env): Promise<Response> {
   }
 
   const directVideoUrl = typeof body.videoUrl === 'string' ? body.videoUrl.trim() : '';
-  const platformUrl = typeof body.url === 'string' ? body.url.trim() : '';
+  let platformUrl = typeof body.url === 'string' ? body.url.trim() : '';
+  if (platformUrl) platformUrl = normalizeFacebookUrl(platformUrl);
 
   if (!directVideoUrl && !platformUrl) {
     return json({ error: 'Provide "videoUrl" (direct) or "url" (platform)' }, 400);
@@ -346,7 +348,8 @@ async function handleSubmitHtml(request: Request, env: Env): Promise<Response> {
   const htmlContent = typeof body.html === 'string' ? body.html : '';
   const rawUrl = typeof body.url === 'string' ? body.url.trim() : '';
   const cleanUrlMatch = rawUrl.match(/https?:\/\/[^\s"'<>]+/);
-  const platformUrl = cleanUrlMatch ? cleanUrlMatch[0] : rawUrl;
+  let platformUrl = cleanUrlMatch ? cleanUrlMatch[0] : rawUrl;
+  if (platformUrl) platformUrl = normalizeFacebookUrl(platformUrl);
 
   if (!htmlContent && !platformUrl) {
     return json({ error: 'Missing "html" or "url" field' }, 400);
@@ -472,7 +475,7 @@ async function handleResolve(request: Request, env: Env): Promise<Response> {
     return json({ error: 'Missing or invalid ?url parameter' }, 400);
   }
 
-  const trimmed = rawUrl.trim();
+  const trimmed = normalizeFacebookUrl(rawUrl.trim());
   if (isValidTikTokUrl(trimmed)) {
     const resolved = await resolveTikTokUrl(trimmed);
     if (!resolved) return json({ error: 'Could not resolve TikTok URL' }, 422);
@@ -498,10 +501,11 @@ async function handleResolveDebug(request: Request): Promise<Response> {
 
 async function handleProxy(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
-  const targetUrl = url.searchParams.get('url');
-  if (!targetUrl || !isValidUrl(targetUrl)) {
+  const rawTarget = url.searchParams.get('url');
+  if (!rawTarget || !isValidUrl(rawTarget)) {
     return json({ error: 'Missing or invalid ?url parameter' }, 400);
   }
+  const targetUrl = normalizeFacebookUrl(rawTarget.trim());
 
   if (isValidFacebookUrl(targetUrl)) {
     const resolved = await callFallbackResolver(env, targetUrl);

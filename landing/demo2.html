@@ -359,6 +359,16 @@
   var currentPlayUrl = '';
   var fallbackAttempted = false;
 
+  function normalizeFacebookUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    var cleaned = url.trim();
+    cleaned = cleaned.replace(/^https?:\/\/m\.facebook\.com\//i, 'https://www.facebook.com/');
+    cleaned = cleaned.replace(/\/(?:share|m)\/[rvp]\/([a-zA-Z0-9_-]+)\/?/i, '/reel/$1');
+    cleaned = cleaned.replace(/([?&])(?:mibextid|rdid|wtsid|_rdr|refsrc|extid|_fb_noscript)=[^&]*/gi, '');
+    cleaned = cleaned.replace(/[?&]+$/, '').replace(/\?&/, '?');
+    return cleaned;
+  }
+
   function playItem(item) {
     placeholder.style.display = 'none';
     video.src = '';
@@ -371,14 +381,14 @@
 
     // 1. If item already has a resolved direct CDN URL, play directly
     if (item.videoUrl && /^https?:\/\//.test(item.videoUrl) && item.videoUrl !== item.sourceUrl) {
-      log('Playing pre-resolved stream', 'info');
+      log('Playing pre-resolved stream', 'ok');
       video.src = item.videoUrl;
       video.load();
       video.play().catch(function () {});
       return;
     }
 
-    var src = item.sourceUrl || '';
+    var src = normalizeFacebookUrl(item.sourceUrl || '');
     var isFb = /facebook\.com|fb\.watch/.test(src);
 
     if (isFb) {
@@ -411,6 +421,7 @@
     title = title || '';
     var rawUrl = urlInput.value.trim();
     if (!rawUrl) { log('Enter a URL first', 'err'); return; }
+    rawUrl = normalizeFacebookUrl(rawUrl);
 
     var startTs = Date.now();
     placeholder.style.display = 'none';

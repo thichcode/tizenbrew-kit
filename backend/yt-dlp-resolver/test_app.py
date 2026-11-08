@@ -962,6 +962,23 @@ class ProxyConfigurationTests(unittest.TestCase):
         proxy_client.send.assert_awaited_once()
         direct_client.send.assert_awaited_once()
 
+    def test_normalize_facebook_url(self):
+        # /share/r/ with tracking params
+        u1 = "https://www.facebook.com/share/r/1834758357946072/?mibextid=wwXIfr"
+        self.assertEqual(app.normalize_facebook_url(u1), "https://www.facebook.com/reel/1834758357946072")
+
+        # /share/v/
+        u2 = "https://www.facebook.com/share/v/1834758357946072/"
+        self.assertEqual(app.normalize_facebook_url(u2), "https://www.facebook.com/reel/1834758357946072")
+
+        # m.facebook.com
+        u3 = "https://m.facebook.com/reel/1834758357946072/?wtsid=rdr_123"
+        self.assertEqual(app.normalize_facebook_url(u3), "https://www.facebook.com/reel/1834758357946072/")
+
+        # alphanumeric share id
+        u4 = "https://www.facebook.com/share/r/pPjR44QW8K6J2rS9/?mibextid=UalRPS"
+        self.assertEqual(app.normalize_facebook_url(u4), "https://www.facebook.com/reel/pPjR44QW8K6J2rS9")
+
 
 if __name__ == "__main__":
     unittest.main()
