@@ -530,6 +530,20 @@ describe('shortvideo-feed worker', () => {
     });
   });
 
+  describe('GET /api/app-version', () => {
+    it('returns app version metadata with web and apk info', async () => {
+      const res = await worker.fetch(new Request('https://feed.example.com/api/app-version'), env());
+      expect(res.status).toBe(200);
+      const data = await json(res) as Record<string, unknown>;
+      expect(data.ok).toBe(true);
+      expect(data.webVersion).toBe('1.2.28');
+      expect(data.webBundleUrl).toContain('shortvideo-tv@1.2.28');
+      expect(data.apkVersion).toBe('1.2.28');
+      expect(typeof data.apkVersionCode).toBe('number');
+      expect(data.apkUrl).toContain('ShortVideoTV.apk');
+    });
+  });
+
   describe('normalizeFacebookUrl', () => {
     it('normalizes /share/r/ and /share/v/ links to /reel/', () => {
       expect(normalizeFacebookUrl('https://www.facebook.com/share/r/18a1vD3qpQ/?mibextid=wwXIfr'))

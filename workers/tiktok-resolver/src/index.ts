@@ -624,6 +624,37 @@ async function handleDeleteSuggestions(request: Request, env: Env): Promise<Resp
   return json({ ok: true });
 }
 
+function handleAppVersion(): Response {
+  return json({
+    ok: true,
+    webVersion: '1.2.28',
+    webBundleUrl: 'https://cdn.jsdelivr.net/npm/shortvideo-tv@1.2.28/dist/inject.js',
+    webBundleFallbackUrl: 'https://raw.githubusercontent.com/thichcode/tizenbrew-kit/main/packages/templates/fb-reels-tv/dist/inject.js',
+    apkVersion: '1.2.28',
+    apkVersionCode: 28,
+    apkUrl: 'https://github.com/thichcode/tizenbrew-kit/releases/latest/download/ShortVideoTV.apk',
+    changelog: 'Tự động cập nhật ngầm, tối ưu luồng phát và sửa link Reels Facebook',
+  });
+}
+
+async function handleWebInject(env: Env): Promise<Response> {
+  try {
+    const res = await fetch('https://cdn.jsdelivr.net/npm/shortvideo-tv@1.2.28/dist/inject.js');
+    if (res.ok) {
+      const text = await res.text();
+      return new Response(text, {
+        status: 200,
+        headers: {
+          'content-type': 'application/javascript; charset=utf-8',
+          'cache-control': 'public, max-age=3600',
+          'access-control-allow-origin': '*',
+        },
+      });
+    }
+  } catch {}
+  return json({ error: 'Bundle not available' }, 502);
+}
+
 function handleDownloadShortcut(url: URL): Response {
   const code = url.searchParams.get('code') || 'TVWLQISO';
   const xml = generateShortcutXml(code, WORKER_URL);
@@ -649,6 +680,12 @@ export default {
       if (isGetOrHead && url.pathname === '/setup') return handleSetup(url);
       if (isGetOrHead && (url.pathname === '/shortcut' || url.pathname === '/download-shortcut')) {
         return handleDownloadShortcut(url);
+      }
+      if (isGetOrHead && (url.pathname === '/api/app-version' || url.pathname === '/app-version')) {
+        return handleAppVersion();
+      }
+      if (isGetOrHead && url.pathname === '/web/inject.js') {
+        return handleWebInject(env);
       }
       if (request.method === 'POST' && url.pathname === '/submit') return handleSubmit(request, env);
       if (request.method === 'POST' && url.pathname === '/submit-html') return handleSubmitHtml(request, env);

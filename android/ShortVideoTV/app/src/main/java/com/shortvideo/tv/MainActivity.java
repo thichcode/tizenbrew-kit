@@ -5,9 +5,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.lang.ref.WeakReference;
 
 public class MainActivity extends Activity {
@@ -24,7 +28,27 @@ public class MainActivity extends Activity {
         webView.getSettings().setDomStorageEnabled(true);
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         webView.getSettings().setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (request != null && request.getUrl() != null) {
+                    String path = request.getUrl().getPath();
+                    if (path != null && path.endsWith("inject.js")) {
+                        File customBundle = UpdateManager.getCustomWebInjectFile(MainActivity.this);
+                        if (customBundle != null) {
+                            try {
+                                return new WebResourceResponse(
+                                    "application/javascript",
+                                    "UTF-8",
+                                    new FileInputStream(customBundle)
+                                );
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+        });
         // Register the JS bridge BEFORE loading the page, otherwise the web app
         // can boot before window.AndroidBridge exists and falls back to the
         // HTML5 <video> player, which cannot play Facebook CDN streams.
@@ -32,6 +56,9 @@ public class MainActivity extends Activity {
 
         setContentView(webView);
         webView.loadUrl("file:///android_asset/web/index.html");
+
+        // Trigger background update check (Web bundle OTA + Native APK)
+        UpdateManager.checkAndUpdate(this);
     }
 
     @Override
