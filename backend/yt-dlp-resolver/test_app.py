@@ -832,7 +832,7 @@ class ProxyConfigurationTests(unittest.TestCase):
         os.environ["PROXY_PASS"] = "super_secret_password"
         health_res = app.health()
         self.assertTrue(health_res["ok"])
-        self.assertEqual(health_res["version"], "0.4.2")
+        self.assertEqual(health_res["version"], "0.4.3")
         self.assertEqual(health_res["proxy"], "http://103.195.238.24:443")
         self.assertNotIn("secret_user", str(health_res))
         self.assertNotIn("super_secret_password", str(health_res))

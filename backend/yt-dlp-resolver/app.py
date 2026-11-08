@@ -113,7 +113,7 @@ async def lifespan(application: FastAPI):
             yield
 
 
-app = FastAPI(title="yt-dlp Resolver", version="0.4.2", lifespan=lifespan)
+app = FastAPI(title="yt-dlp Resolver", version="0.4.3", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -857,7 +857,7 @@ def health():
         parsed = urlparse(proxy)
         host_port = parsed.netloc.split("@")[-1]
         proxy_host = f"{parsed.scheme}://{host_port}"
-    return {"ok": True, "version": "0.4.2", "proxy": proxy_host}
+    return {"ok": True, "version": "0.4.3", "proxy": proxy_host}
 
 
 @app.get("/resolve", response_model=ResolveResponse)
