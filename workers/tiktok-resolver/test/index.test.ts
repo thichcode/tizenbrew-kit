@@ -267,14 +267,14 @@ describe('shortvideo-feed worker', () => {
     });
 
     it('accepts Facebook share/v/ link format and normalizes to canonical reel URL', async () => {
-      const rawUrl = 'https://www.facebook.com/share/v/18a1vD3qpQ/?mibextid=wwXIfr';
+      const rawUrl = 'https://www.facebook.com/share/v/1834758357946072/?mibextid=wwXIfr';
       mockHtmlFetch('<html></html>');
 
       const res = await post('https://feed.example.com/submit', { code: CODE, url: rawUrl }, env());
       expect(res.status).toBe(200);
       const item = (await json(res)).item as Record<string, unknown>;
       expect(item.source).toBe('Facebook');
-      expect(item.sourceUrl).toBe('https://www.facebook.com/reel/18a1vD3qpQ');
+      expect(item.sourceUrl).toBe('https://www.facebook.com/reel/1834758357946072');
     });
   });
 
@@ -545,11 +545,18 @@ describe('shortvideo-feed worker', () => {
   });
 
   describe('normalizeFacebookUrl', () => {
-    it('normalizes /share/r/ and /share/v/ links to /reel/', () => {
+    it('normalizes numeric /share/r/ and /share/v/ links to /reel/', () => {
+      expect(normalizeFacebookUrl('https://www.facebook.com/share/r/1834758357946072/?mibextid=wwXIfr'))
+        .toBe('https://www.facebook.com/reel/1834758357946072');
+      expect(normalizeFacebookUrl('https://www.facebook.com/share/v/1834758357946072/?mibextid=wwXIfr'))
+        .toBe('https://www.facebook.com/reel/1834758357946072');
+    });
+
+    it('preserves alphanumeric share slugs without breaking into /reel/', () => {
+      expect(normalizeFacebookUrl('https://www.facebook.com/share/v/1A9fpciSDU/?mibextid=wwXIfr'))
+        .toBe('https://www.facebook.com/share/v/1A9fpciSDU/');
       expect(normalizeFacebookUrl('https://www.facebook.com/share/r/18a1vD3qpQ/?mibextid=wwXIfr'))
-        .toBe('https://www.facebook.com/reel/18a1vD3qpQ');
-      expect(normalizeFacebookUrl('https://www.facebook.com/share/v/18a1vD3qpQ/?mibextid=wwXIfr'))
-        .toBe('https://www.facebook.com/reel/18a1vD3qpQ');
+        .toBe('https://www.facebook.com/share/r/18a1vD3qpQ/');
     });
 
     it('replaces m.facebook.com with www.facebook.com', () => {

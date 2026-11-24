@@ -363,8 +363,9 @@
     if (!url || typeof url !== 'string') return url;
     var cleaned = url.trim();
     cleaned = cleaned.replace(/^https?:\/\/m\.facebook\.com\//i, 'https://www.facebook.com/');
-    cleaned = cleaned.replace(/\/(?:share|m)\/[rvp]\/([a-zA-Z0-9_-]+)\/?/i, '/reel/$1');
-    cleaned = cleaned.replace(/([?&])(?:mibextid|rdid|wtsid|_rdr|refsrc|extid|_fb_noscript)=[^&]*/gi, '');
+    // Only convert /share/[rvp]/<digits> to /reel/<digits> when numeric; preserve slugs
+    cleaned = cleaned.replace(/\/(?:share|m)\/[rvp]\/(\d+)(?=[/?#]|$)\/?/i, '/reel/$1');
+    cleaned = cleaned.replace(/([?&])(?:mibextid|rdid|wtsid|_rdr|refsrc|extid|_fb_noscript|share_url)=[^&]*/gi, '');
     cleaned = cleaned.replace(/[?&]+$/, '').replace(/\?&/, '?');
     return cleaned;
   }

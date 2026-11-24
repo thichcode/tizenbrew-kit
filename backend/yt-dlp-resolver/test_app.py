@@ -975,9 +975,14 @@ class ProxyConfigurationTests(unittest.TestCase):
         u3 = "https://m.facebook.com/reel/1834758357946072/?wtsid=rdr_123"
         self.assertEqual(app.normalize_facebook_url(u3), "https://www.facebook.com/reel/1834758357946072/")
 
-        # alphanumeric share id
-        u4 = "https://www.facebook.com/share/r/pPjR44QW8K6J2rS9/?mibextid=UalRPS"
-        self.assertEqual(app.normalize_facebook_url(u4), "https://www.facebook.com/reel/pPjR44QW8K6J2rS9")
+        # alphanumeric share id with redirect resolution
+        u4 = "https://www.facebook.com/share/v/1A9fpciSDU/?mibextid=UalRPS"
+        with patch.object(app, "resolve_facebook_share_slug", return_value="https://www.facebook.com/reel/1490510665425787?rdid=xyz&share_url=abc"):
+            self.assertEqual(app.normalize_facebook_url(u4), "https://www.facebook.com/reel/1490510665425787")
+
+        # alphanumeric share id when redirect cannot be resolved preserves clean share URL
+        with patch.object(app, "resolve_facebook_share_slug", side_effect=lambda u: u):
+            self.assertEqual(app.normalize_facebook_url(u4), "https://www.facebook.com/share/v/1A9fpciSDU/")
 
 
 if __name__ == "__main__":

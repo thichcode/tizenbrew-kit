@@ -141,14 +141,19 @@ function extractDirectFbcdnMp4s(html: string): string[] {
 export function normalizeFacebookUrl(url: string): string {
   if (!url) return url;
   let normalized = url.trim();
-  // Convert /share/r/ID, /share/v/ID, /share/p/ID to /reel/ID
-  normalized = normalized.replace(/\/(?:share|m)\/[rvp]\/([a-zA-Z0-9_-]+)\/?/i, '/reel/$1');
+
   // Convert m.facebook.com to www.facebook.com
   normalized = normalized.replace(/^https?:\/\/m\.facebook\.com/i, 'https://www.facebook.com');
+
+  // Only convert /share/[rvp]/<numeric_id> to /reel/<numeric_id> when it's all digits.
+  // Alphanumeric slugs (e.g. /share/v/1A9fpciSDU/) are tracking slugs, not reel IDs;
+  // rewriting them directly to /reel/<slug> produces a 404 URL.
+  normalized = normalized.replace(/\/(?:share|m)\/[rvp]\/(\d+)(?=[/?#]|$)\/?/i, '/reel/$1');
+
   // Strip ephemeral tracking query params that cause Facebook to trigger login walls
   try {
     const u = new URL(normalized);
-    const trackingKeys = ['mibextid', 'rdid', 'wtsid', '_rdr', 'refsrc', 'extid', '_fb_noscript'];
+    const trackingKeys = ['mibextid', 'rdid', 'wtsid', '_rdr', 'refsrc', 'extid', '_fb_noscript', 'share_url'];
     for (const key of trackingKeys) {
       u.searchParams.delete(key);
     }
@@ -220,8 +225,9 @@ export async function resolveFacebookUrl(url: string): Promise<ResolvedItem | nu
       redirect: 'follow',
     });
     if (!res.ok) return null;
+    const finalUrl = res.url && res.url !== normalizedUrl ? res.url : normalizedUrl;
     const html = await res.text();
-    return parseFacebookHtml(html, normalizedUrl);
+    return parseFacebookHtml(html, finalUrl);
   } catch {
     return null;
   }

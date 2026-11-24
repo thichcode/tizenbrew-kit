@@ -1,4 +1,5 @@
 import asyncio
+import http.client
 import json
 import logging
 import os
@@ -262,20 +263,49 @@ def is_facebook_url(url: str) -> bool:
     return bool(re.search(r"(?:www\.|m\.)?(?:facebook\.com|fb\.watch)", url))
 
 
+def resolve_facebook_share_slug(share_url: str) -> str:
+    """Follow HTTP redirect for alphanumeric Facebook share slugs (/share/v/<slug>/) to get canonical reel URL."""
+    try:
+        parsed = urlparse(share_url)
+        hostname = parsed.hostname or "www.facebook.com"
+        conn = http.client.HTTPSConnection(hostname, timeout=10)
+        path = parsed.path
+        if parsed.query:
+            path += "?" + parsed.query
+        conn.request("HEAD", path, headers={"User-Agent": "curl/8.22.0", "Accept": "*/*"})
+        res = conn.getresponse()
+        loc = res.getheader("Location")
+        if loc:
+            return urljoin(share_url, loc)
+    except Exception as exc:
+        logger.warning("Failed to resolve facebook share redirect (%s): %s", share_url, exc)
+    return share_url
+
+
 def normalize_facebook_url(url: str) -> str:
     if not url:
         return url
     url = url.strip()
-    # Normalize /share/r/ID, /share/v/ID, /share/p/ID to /reel/ID
-    url = re.sub(r"/(?:share|m)/[rvp]/([a-zA-Z0-9_-]+)/?", r"/reel/\1", url)
     # Normalize m.facebook.com to www.facebook.com
     url = re.sub(r"^https?://m\.facebook\.com", "https://www.facebook.com", url)
+
+    # Handle /share/r/ID, /share/v/ID, /share/p/ID
+    share_match = re.search(r"/(?:share|m)/[rvp]/([a-zA-Z0-9_-]+)/?", url)
+    if share_match:
+        slug = share_match.group(1)
+        if slug.isdigit():
+            # Pure digits is an actual reel/video ID
+            url = re.sub(r"/(?:share|m)/[rvp]/(\d+)/?", r"/reel/\1", url)
+        else:
+            # Alphanumeric slug: follow redirect to discover canonical reel URL
+            url = resolve_facebook_share_slug(url)
+
     # Strip tracking query parameters that cause login redirects or yt-dlp issues
     try:
         parsed = urlparse(url)
         if "facebook.com" in (parsed.hostname or ""):
             query = urllib.parse.parse_qs(parsed.query)
-            for k in ["mibextid", "rdid", "wtsid", "_rdr", "refsrc", "extid", "_fb_noscript"]:
+            for k in ["mibextid", "rdid", "wtsid", "_rdr", "refsrc", "extid", "_fb_noscript", "share_url"]:
                 query.pop(k, None)
             new_query = urllib.parse.urlencode(query, doseq=True)
             url = urllib.parse.urlunparse(parsed._replace(query=new_query))
