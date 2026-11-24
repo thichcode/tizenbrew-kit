@@ -1,25 +1,18 @@
 [Unit]
-Description=yt-dlp Resolver API for ShortVideo TV
+Description=yt-dlp Resolver Backend
 After=network.target
 
 [Service]
 Type=simple
-User=ytresolver
-Group=ytresolver
-WorkingDirectory=/opt/yt-dlp-resolver
-EnvironmentFile=/etc/yt-dlp-resolver.env
-Environment="PYTHONDONTWRITEBYTECODE=1"
-ExecStart=/opt/yt-dlp-resolver/.venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8001 --no-access-log
+User=root
+WorkingDirectory=/var/www/yt-dlp-resolver
+Environment="PATH=/var/www/yt-dlp-resolver/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin"
+Environment="YT_DLP_PATH=/var/www/yt-dlp-resolver/venv/bin/yt-dlp"
+Environment="API_KEY=299145bbcefca5e3dd0f193dc6d187b0"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/var/www/yt-dlp-resolver/venv/bin/uvicorn app:app --host 0.0.0.0 --port 443
 Restart=always
-RestartSec=5
-KillSignal=SIGINT
-TimeoutStopSec=30
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-StandardOutput=journal
-StandardError=journal
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target

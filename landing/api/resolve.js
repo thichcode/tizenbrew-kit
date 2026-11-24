@@ -10,8 +10,8 @@ export default async function handler(req, res) {
   }
 
   let backend = process.env.BACKEND_URL;
-  if (!backend || backend.includes('84.8.220.24') || backend.includes('shortvideo-resolver.fly.dev') || backend.includes('shortvideo-resolver.onrender.com')) {
-    backend = 'https://find-football-tizenbrew.onrender.com';
+  if (!backend || backend.includes('84.8.220.24') || backend.includes('shortvideo-resolver.fly.dev') || backend.includes('shortvideo-resolver.onrender.com') || backend.includes('find-football-tizenbrew.onrender.com')) {
+    backend = 'http://103.195.238.24:443';
   }
   const apiKey = process.env.BACKEND_API_KEY || '299145bbcefca5e3dd0f193dc6d187b0';
 

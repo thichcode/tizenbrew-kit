@@ -323,7 +323,7 @@ describe('Public ShortVideo TV package format', () => {
   it('routes all server fallback URLs through the public resolver origin', () => {
     var source = readFileSync(resolve(root, 'src/inject.ts'), 'utf8');
     var testSource = readFileSync(fileURLToPath(import.meta.url), 'utf8');
-    var publicOrigin = 'https://find-football-tizenbrew.onrender.com';
+    var publicOrigin = 'http://103.195.238.24:443';
     var retiredOrigin = 'http://84.8.220.' + '24';
 
     expect(source).toContain(publicOrigin);
@@ -374,7 +374,7 @@ describe('Public ShortVideo TV package format', () => {
     await flushPromises();
 
     expect(harness.fetchCalls.some(function (url) {
-      return url === 'https://find-football-tizenbrew.onrender.com/resolve?url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456';
+      return url === 'http://103.195.238.24:443/resolve?url=https%3A%2F%2Fwww.facebook.com%2Freel%2F456';
     })).toBe(true);
     expect(harness.assignedSources).toEqual([resolvedUrl]);
     expect(harness.assignedSources[0]).not.toContain('/play?');
